@@ -142,7 +142,7 @@ end
 addInfrequentUpdateCallback("detection", 0.1, detectionCheck)
 
 local function inventoryChangeCheck(dt)
-    -- TODO: skip when in shop UI or dialogue
+    -- TODO: skip when in shop UI or dialogue!
     local newItemsList = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
         if itemsInInventory[item.id] == nil then
@@ -194,10 +194,14 @@ local function onUpdate(dt)
     infrequentUpdate(dt)
 end
 
+local function onOpenContainer(data)
+end
+
 return {
     eventHandlers = {
-        ernShowWantedMessage = showWantedMessage,
-        ernShowExpelledMessage = showExpelledMessage
+        [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
+        [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
+        [settings.MOD_NAME .. "onOpenContainer"] = onOpenContainer,
     },
     engineHandlers = {
         onUpdate = onUpdate

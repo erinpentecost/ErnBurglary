@@ -15,9 +15,11 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local settings = require("scripts.ErnBurglary.settings")
+local common = require("scripts.ErnBurglary.common")
 local world = require('openmw.world')
 local types = require("openmw.types")
 local core = require("openmw.core")
+local async = require('openmw.async')
 local aux_util = require('openmw_aux.util')
 local storage = require('openmw.storage')
 
@@ -76,25 +78,6 @@ local function saveCellState(cellState)
     persistedState[thieveryKey(cellState.cellID, cellState.playerID)] = cellState
 end
 
-local function serializeOwner(owner)
-    if (owner == nil) or ((owner.recordId == nil) and (owner.factionId == nil)) then
-        return nil
-    end
-    return {
-        recordId = owner.recordId,
-        factionRank = owner.factionRank,
-        factionId = owner.factionId
-    }
-end
-
-local function getInventoryOwnership(inventory)
-    local itemIDtoOwnership = {}
-    for _, itemInContainer in ipairs(inventory:getAll()) do
-        itemIDtoOwnership[itemInContainer.id] = serializeOwner(itemInContainer.owner)
-    end
-    return itemIDtoOwnership
-end
-
 -- trackOwnedItems resets state.itemIDtoOwnership.
 local function trackOwnedItems(cellID, playerID)
     settings.debugPrint("trackOwnedItems(" .. tostring(cellID) .. ") start")
@@ -113,11 +96,19 @@ local function trackOwnedItems(cellID, playerID)
     -- Save ownership state for loose items and actor inventories.
     for _, item in ipairs(cell:getAll()) do
         if types.Item.objectIsInstance(item) then
-            cellState.itemIDtoOwnership[item.id] = serializeOwner(item.owner)
+            cellState.itemIDtoOwnership[item.id] = common.serializeOwner(item.owner)
         elseif types.NPC.objectIsInstance(item) then
-            for k, v in pairs(getInventoryOwnership(types.NPC.inventory(item))) do
-                cellState.itemIDtoOwnership[k] = v
+            for k, v in pairs(common.getInventoryOwnership(types.NPC.inventory(item))) do
+                if v == nil then
+                    -- Assume owner is the holder if not explicit.
+                    cellState.itemIDtoOwnership[k] = {
+                        recordId=item.recordId,
+                    }
+                else
+                    cellState.itemIDtoOwnership[k] = v
+                end
             end
+        -- could do containers here, but they may not be resolved yet.
         end
     end
 
@@ -126,18 +117,66 @@ local function trackOwnedItems(cellID, playerID)
     settings.debugPrint("trackOwnedItems(" .. tostring(cellID) .. ") end")
 end
 
+local function inferAreaOwner(cellID, playerID)
+    local cell = world.getCellById(cellID)
+    if cell.isExterior then
+        return nil
+    end
+
+    local highestCount = 0
+    local bestMatch = nil
+
+    local ownerToCount = {}
+    local cellState = getCellState(cellID, playerID)
+    for _, owner in pairs(cellState.itemIDtoOwnership) do
+        local key = common.ownerToString(owner)
+        if ownerToCount[key] == nil then
+            ownerToCount[key] = 0
+        end
+        ownerToCount[key] = ownerToCount[key] + 1
+        if ownerToCount[key] > highestCount then
+            highestCount = ownerToCount[key]
+            bestMatch = owner
+        end
+    end
+    return bestMatch
+end
+
 -- Save ownership data for containers when they are activated.
 -- Adds elements to state.itemIDtoOwnership.
 local function onActivate(object, actor)
+    -- I can't get the owner of a container.
+
     if types.Player.objectIsInstance(actor) and types.Container.objectIsInstance(object) then
         settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player)")
         local inventory = types.Container.inventory(object)
         if inventory:isResolved() ~= true then
             inventory:resolve()
+            settings.debugPrint("resolved container")
+            inventory = types.Container.inventory(object)
         end
+        
+        -- Objects in containers don't have owners.
+        local owner = nil
+        if common.serializeOwner(object.owner) ~= nil then
+            -- This doesn't work (yet?), but would be great.
+            owner = common.serializeOwner(object.owner)
+            settings.debugPrint("got container owner: " .. aux_util.deepToString(owner))
+        else
+            -- Gross workaround to guess the owner.
+            owner = inferAreaOwner(actor.cell.id, actor.id)
+            settings.debugPrint("inferred area owner: " .. aux_util.deepToString(owner))
+        end
+
+        -- track items in the container
         local cellState = getCellState(actor.cell.id, actor.id)
-        for k, v in pairs(getInventoryOwnership(inventory)) do
-            cellState.itemIDtoOwnership[k] = v
+        for k, v in pairs(common.getInventoryOwnership(inventory, owner)) do
+            if v ~= nil then
+                cellState.itemIDtoOwnership[k] = v
+                settings.debugPrint("tracked item in container: " .. k .. " has owner " .. aux_util.deepToString(owner))
+            else
+                settings.debugPrint("tracked item in container: " .. k .. " has no owner")
+            end
         end
         saveCellState(cellState)
     end
@@ -197,9 +236,9 @@ local function filterDeadNPCs(npcIDtoInstanceMap)
     local out = {}
     for id, npcInstance in pairs(npcIDtoInstanceMap) do
         if types.Actor.isDead(npcInstance) or types.Actor.isDeathFinished(npcInstance) then
-            --settings.debugPrint("npc " .. npcInstance.id .. " is dead")
+            -- settings.debugPrint("npc " .. npcInstance.id .. " is dead")
         else
-            --settings.debugPrint("npc " .. npcInstance.id .. " is NOT dead")
+            -- settings.debugPrint("npc " .. npcInstance.id .. " is NOT dead")
             out[id] = npcInstance
         end
     end
@@ -211,7 +250,7 @@ local function factionsOfNPCs(npcIDtoInstanceMap)
     for _, npcInstance in pairs(npcIDtoInstanceMap) do
         for _, faction in ipairs(types.NPC.getFactions(npcInstance)) do
             out[faction] = true
-            --settings.debugPrint("added faction " .. faction)
+            -- settings.debugPrint("added faction " .. faction)
         end
     end
     return out
@@ -245,10 +284,10 @@ local function handleTheftFromNPC(player, npc, value)
     settings.debugPrint("handleTheftFromNPC(player, " .. npc.id .. ", " .. value .. ")")
     -- npc is an instance.
     -- always reduce disposition. 2gp == 1 disposition
-    local startDisposition = types.NPC.getDisposition(npc, player)
+    local startDisposition = types.NPC.getBaseDisposition(npc, player)
 
     local dispoPenalty = math.min(startDisposition, value)
-    types.NPC.modifyBaseDisposition(npc, player, -1*dispoPenalty)
+    types.NPC.modifyBaseDisposition(npc, player, -1 * dispoPenalty)
 
     local bountyPenalty = value - dispoPenalty
 
@@ -257,7 +296,8 @@ local function handleTheftFromNPC(player, npc, value)
     local currentCrime = types.Player.getCrimeLevel(player)
     types.Player.setCrimeLevel(player, currentCrime + bountyPenalty)
 
-    print("Theft from "..npc.recordId .." dropped disposition by " .. dispoPenalty .. ", and increased bounty by " .. bountyPenalty .. ".")
+    print("Theft from " .. npc.recordId .. " dropped disposition by " .. dispoPenalty .. " from " .. startDisposition ..
+              ", and increased bounty by " .. bountyPenalty .. ".")
 end
 
 local function handleTheftFromFaction(player, faction, value)
@@ -277,7 +317,7 @@ local function handleTheftFromFaction(player, faction, value)
         for _, playerFaction in ipairs(types.NPC.getFactions(player)) do
             if playerFaction == faction then
                 types.NPC.expel(player, playerFaction)
-                player:sendEvent("ernShowExpelledMessage", {
+                player:sendEvent(settings.MOD_NAME .. "showExpelledMessage", {
                     faction = faction
                 })
                 expelled = true
@@ -285,7 +325,8 @@ local function handleTheftFromFaction(player, faction, value)
         end
     end
 
-    print("Theft from "..faction .." dropped reputation by " .. reputationPenalty .. ", and increased bounty by " .. bountyPenalty .. ". Expelled: " .. tostring(expelled))
+    print("Theft from " .. faction .. " dropped reputation by " .. reputationPenalty .. " from " .. startReputation ..
+              ", and increased bounty by " .. bountyPenalty .. ". Expelled: " .. tostring(expelled))
 end
 
 -- params:
@@ -335,13 +376,13 @@ local function onCellExit(data)
 
         local owner = cellState.itemIDtoOwnership[newItem.id]
 
-        settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
-                                tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
-                                tostring(owner.factionRank) .. "), gp value: " .. value)
-
         if (owner == nil) then
             -- the item is not owned.
         elseif (owner.recordId ~= nil) then
+            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
+                                tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
+                                tostring(owner.factionRank) .. "), gp value: " .. value)
+
             -- the item is owned by an individual.
             -- if that individual is alive, they will report.
             local instance = npcRecordToInstance[owner.recordId]
@@ -356,6 +397,10 @@ local function onCellExit(data)
                 npcOwnerTheftValue[instance.id] = npcOwnerTheftValue[instance.id] + value
             end
         elseif (owner.factionId ~= nil) and (atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
+            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
+                                tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
+                                tostring(owner.factionRank) .. "), gp value: " .. value)
+
             -- the item is owned by a faction.
             -- if any members of the faction spotted the player,
             -- they will report it.
@@ -380,7 +425,7 @@ local function onCellExit(data)
     end
 
     if totalTheftValue > 0 then
-        data.player:sendEvent("ernShowWantedMessage", {
+        data.player:sendEvent(settings.MOD_NAME .. "showWantedMessage", {
             value = totalTheftValue
         })
     end
@@ -391,6 +436,7 @@ end
 -- cellID
 -- itemsList
 local function onNewItems(data)
+    -- this is not called when the game is paused.
     settings.debugPrint("onNewItems(" .. aux_util.deepToString(data) .. ")")
     local cellState = getCellState(data.cellID, data.player.id)
     for id, item in ipairs(data.itemsList) do
