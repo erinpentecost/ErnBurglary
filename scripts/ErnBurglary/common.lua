@@ -54,7 +54,7 @@ local function getInventoryOwnership(inventory, backupOwner)
             itemIDtoOwnership[itemInContainer.id] = serializeOwner(itemInContainer.owner)
             --settings.debugPrint("found owner for item in container: " .. itemInContainer.recordId)
         else
-            itemIDtoOwnership[itemInContainer.id] = backupOwner
+            itemIDtoOwnership[itemInContainer.id] = serializeOwner(backupOwner)
             --settings.debugPrint("no owner for item in container: " .. itemInContainer.recordId)
         end
     end

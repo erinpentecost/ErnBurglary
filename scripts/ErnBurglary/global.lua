@@ -98,7 +98,8 @@ local function trackOwnedItems(cellID, playerID)
         if types.Item.objectIsInstance(item) then
             cellState.itemIDtoOwnership[item.id] = common.serializeOwner(item.owner)
         elseif types.NPC.objectIsInstance(item) then
-            for k, v in pairs(common.getInventoryOwnership(types.NPC.inventory(item))) do
+            local backupOwner = {recordId = item.recordId}
+            for k, v in pairs(common.getInventoryOwnership(types.NPC.inventory(item), backupOwner)) do
                 if v == nil then
                     -- Assume owner is the holder if not explicit.
                     cellState.itemIDtoOwnership[k] = {
