@@ -45,12 +45,12 @@ local warnCooldownTimer = 0
 
 -- itemsInInventory is used to track changes in the
 -- player's inventory.
--- it's a map of item instance id -> true.
+-- it's a map of item instance id -> instance.
 local itemsInInventory = {}
 local function trackInventory()
     itemsInInventory = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
-        itemsInInventory[item.id] = true
+        itemsInInventory[item.id] = item
     end
 end
 trackInventory()
@@ -103,7 +103,7 @@ local function addInfrequentUpdateCallback(id, minDelta, callback)
     }
 end
 local function infrequentUpdate(dt)
-    for k, v in infrequentMap do
+    for k, v in pairs(infrequentMap) do
         infrequentMap[k].sum = v.sum + dt
         if infrequentMap[k].sum > v.threshold then
             infrequentMap[k].sum = infrequentMap[k].sum - v.threshold
@@ -145,10 +145,11 @@ local function inventoryChangeCheck(dt)
     -- TODO: skip when in shop UI or dialogue
     local newItemsList = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
-        if itemsInInventory[item.id] ~= true then
-            table.insert(newItemsList, item.id)
+        if itemsInInventory[item.id] == nil then
+            table.insert(newItemsList, item)
+            settings.debugPrint("found new item: " .. aux_util.deepToString(item,2))
             -- don't re-add the item
-            itemsInInventory[item.id] = true
+            itemsInInventory[item.id] = item
         end
     end
     if #newItemsList > 0 then
