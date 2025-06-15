@@ -1,0 +1,14 @@
+name: "ErnBurglary"
+description: "Make burglary not so easy by giving NPCs memories better than goldfish."
+
+modSettingsTitle: "Mod Options"
+modSettingsDesc: "Change how the mod works."
+
+debugMode_name: "Debug Mode"
+debugMode_description: "Print debug messages."
+
+showSpottedMessage: "You were spotted by {actorName}!"
+showWarningMessage: "You were spotted in the area earlier."
+
+showWantedMessage: "Your burglary of {value} gold worth of goods was noticed."
+showExpelledMessage: "You've been expelled from {factionName} due to theft."
