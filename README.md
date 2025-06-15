@@ -1,11 +1,17 @@
 # ErnBurglary
-OpenMW mod that adds Spell Books, which teach you a spell when you cast them. Rare Corrupted Spell Books have additional wild effects! Spell Books are a pathway to many abilities the Mages Guild consider to be unnatural.
+OpenMW mod that overhauls theft. No longer will NPCs forget that you were in their house when all their gems were stolen.
 
-Spell Books can contain a huge variety of spells, since they are drawn from all existing (suitable) spells in your world, including those added from other mods.
+If an NPC greets you, they will remember that you were in the area (until you leave the area). If you steal things they own (even when they aren't watching you), you'll be caught once you leave the area.
 
-Spell Books can spawn on magic-using NPCs or in appropriate containers. A few will also be for sale in any book shop, which will be restocked once per day.
+Getting caught this way will first deplete the NPC's dispostion by the value of the stolen goods, and if there's any left over it will be added to your bounty.
 
-![a wizard with a spellbook, created with AI](title_image.jpg)
+Same for items owned by factions, but your faction reputation is affected instead. If you're a member of the faction and manage to get a bounty from the theft, you'll also be expelled.
+
+If everyone that greeted you died before you left the area, then there won't be anyone to report the theft.
+
+You'll be warned if you were spotted in the area when you enter sneak mode.
+
+![a thief with a big bag, created with AI](title_image.jpg)
 
 ## Installing
 Extract [main](https://github.com/erinpentecost/ErnBurglary/archive/refs/heads/main.zip) to your `mods/` folder.
@@ -25,9 +31,4 @@ Feel free to submit a PR to the [repo](https://github.com/erinpentecost/ErnBurgl
 
 ### omwaddon
 The omwaddon contains these entries:
-* enchantment: `ErnBurglary_LearnEnchantment` (casts DrainMagicka on self for 1 sec)
-* spell: `ErnBurglary_restore_magicka`. effects are duration = 2^(index of effect - 1)
-
-### TODO
-* Corruption Orbs
-* More Corruptions
+* theft penalty GMST set to 0
