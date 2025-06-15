@@ -163,7 +163,7 @@ local function onActivate(object, actor)
             -- This doesn't work (yet?), but would be great.
             owner = common.serializeOwner(object.owner)
             settings.debugPrint("got container owner: " .. aux_util.deepToString(owner))
-        else
+        elseif settings.inferOwnership() then
             -- Gross workaround to guess the owner.
             owner = inferAreaOwner(actor.cell.id, actor.id)
             settings.debugPrint("inferred area owner: " .. aux_util.deepToString(owner))

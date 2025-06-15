@@ -26,6 +26,10 @@ local function debugMode()
     return settingsStore:get("debugMode")
 end
 
+local function inferOwnership()
+    return settingsStore:get("inferOwnership")
+end
+
 local function debugPrint(str, ...)
     if debugMode() then
         local arg = {...}
@@ -45,7 +49,15 @@ local function initSettings()
         description = "modSettingsDesc",
         page = MOD_NAME,
         permanentStorage = false,
-        settings = {{
+        settings = {
+            {
+                key = "inferOwnership",
+                name = "inferOwnership_name",
+                description = "inferOwnership_description",
+                default = true,
+                renderer = "checkbox"
+            },
+            {
             key = "debugMode",
             name = "debugMode_name",
             description = "debugMode_description",
@@ -61,6 +73,7 @@ return {
     settingsStore = settingsStore,
     MOD_NAME = MOD_NAME,
 
+    inferOwnership = inferOwnership,
     debugMode = debugMode,
     debugPrint = debugPrint
 }

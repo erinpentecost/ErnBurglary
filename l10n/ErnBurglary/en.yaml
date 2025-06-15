@@ -4,6 +4,9 @@ description: "Make burglary not so easy by giving NPCs memories better than gold
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
 
+inferOwnership_name: "Infer Ownership"
+inferOwnership_description: "Turns on fuzzy ownership logic for items when ownership can't be determined normally."
+
 debugMode_name: "Debug Mode"
 debugMode_description: "Print debug messages."
 
