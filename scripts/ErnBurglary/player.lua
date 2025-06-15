@@ -33,21 +33,27 @@ interfaces.Settings.registerPage {
 
 local warnCooldown = 5
 
+-- lastCellID will be nil if loading from a save game.
+-- otherwise, it will be the cell we just moved from.
 local lastCellID = nil
-
--- spottedBy is an actorRecord.id or factionID or actor.id to true.
-local spottedByActorRecordID = {}
--- spottedByFactionID is a map of factionID -> list of actors
-local spottedByFactionID = {}
--- itemsInCellOwnership is a map of item.id to ownership info.
--- I need to pre-fetch this info because it is stripped after the player
--- picks the item up.
-local itemsInCellOwnership = {}
-local actorRecordIDtoInstance = {}
+-- spottedByActorID deduplicates calls to onSpotted.
+local spottedByActorID = {}
+-- spotted is used cases where we were spotted before sneaking
 local spotted = false
 local sneaking = false
-
 local warnCooldownTimer = 0
+
+-- itemsInInventory is used to track changes in the
+-- player's inventory.
+-- it's a map of item instance id -> true.
+local itemsInInventory = {}
+local function trackInventory()
+    itemsInInventory = {}
+    for _, item in ipairs(types.Actor.inventory(self):getAll()) do
+        itemsInInventory[item.id] = true
+    end
+end
+trackInventory()
 
 local function showWantedMessage(data)
     settings.debugPrint("showWantedMessage")
@@ -88,173 +94,109 @@ end
 
 registerHandlers()
 
-local function anyNPCsAlive(listOfNPCs)
-    if listOfNPCs == nil then
-        return false
-    end
-    for _, npcInstance in ipairs(listOfNPCs) do
-        if types.Actor.isDead(npcInstance) or types.Actor.isDeathFinished(npcInstance) then
-            settings.debugPrint("npc " .. npcInstance.id .. " is dead")
-        else
-            return true
+local infrequentMap = {}
+local function addInfrequentUpdateCallback(id, minDelta, callback)
+    infrequentMap[id] = {
+        sum = math.random(0, minDelta),
+        threshold = minDelta,
+        callback = callback
+    }
+end
+local function infrequentUpdate(dt)
+    for k, v in infrequentMap do
+        infrequentMap[k].sum = v.sum + dt
+        if infrequentMap[k].sum > v.threshold then
+            infrequentMap[k].sum = infrequentMap[k].sum - v.threshold
+            v.callback(v.threshold)
         end
     end
-    return false
 end
 
-local function atLeastRank(factionID, rank)
-    local selfRank = types.NPC.getFactionRank(self, factionID)
-    settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
-    if selfRank == nil then
-        return false
-    elseif (rank == nil) then
-        return true
-    else
-        return selfRank >= rank
-    end
-end
-
-local function calculateTheft()
-    settings.debugPrint("calculateTheft() start for " .. lastCellID)
-    -- report a table of ObjectOwner -> value of stolen goods
-    local npcThefts = {}
-    local factionThefts = {}
-    local didTheft = false
-    -- check for any new items the player stole
-    for _, item in ipairs(types.Actor.inventory(self):getAll()) do
-        local owner = itemsInCellOwnership[item.id]
-        if (owner ~= nil) then
-            -- this is a new stolen item
-            local record = item.type.record(item)
-            settings.debugPrint("new owned item: " .. record.name .. "(" .. item.id .. ") by " ..
-                                    tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
-                                    tostring(owner.factionRank) .. ")")
-            -- don't penalize for individual AND faction ownership because of 
-            -- double jeopardy.
-            if (owner.recordId ~= nil) and (spottedByActorRecordID[owner.recordId]) and
-                anyNPCsAlive({actorRecordIDtoInstance[owner.recordId]}) then
-                settings.debugPrint("you were reported for stealing " .. tostring(record.name) .. " from " ..
-                                        owner.recordId)
-                -- track NPC owners
-                if npcThefts[owner.recordId] == nil then
-                    npcThefts[owner.recordId] = 0
-                end
-                if (record ~= nil) and (record.value ~= nil) then
-                    npcThefts[owner.recordId] = npcThefts[owner.recordId] + record.value
-                    didTheft = true
-                end
-            elseif (owner.factionId ~= nil) and (atLeastRank(owner.factionId, owner.factionRank) ~= true) then
-                settings.debugPrint("you stole from " .. owner.factionId)
-                if anyNPCsAlive(spottedByFactionID[owner.factionId]) then
-                    -- check if the PC is allowed to have it.
-                    settings.debugPrint("you were reported for stealing " .. tostring(record.name) .. " from " ..
-                                            owner.factionId)
-                    -- track faction owners
-                    if factionThefts[owner.factionId] == nil then
-                        factionThefts[owner.factionId] = 0
-                    end
-                    if (record ~= nil) and (record.value ~= nil) then
-                        factionThefts[owner.factionId] = factionThefts[owner.factionId] + record.value
-                        didTheft = true
-                    end
+local function detectionCheck(dt)
+    warnCooldownTimer = warnCooldownTimer - dt
+    for _, actor in ipairs(nearby.actors) do
+        -- check for detectiong
+        if spottedByActorID[actor.id] == nil then
+            local isActive = core.sound.isSayActive(actor)
+            if isActive then
+                spottedByActorID[actor.id] = true
+                core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
+                    player = self,
+                    npc = actor,
+                    cellID = self.cell.id
+                })
+                spotted = true
+                -- Send notice if sneaking.
+                if sneaking and (warnCooldownTimer <= 0) then
+                    warnCooldownTimer = warnCooldown
+                    local npcName = types.NPC.record(actor).name
+                    ui.showMessage(localization("showSpottedMessage", {
+                        actorName = npcName
+                    }))
                 end
             end
         end
     end
-    if (didTheft) then
-        core.sendGlobalEvent("ernOnReported", {
+end
+
+addInfrequentUpdateCallback("detection", 0.1, detectionCheck)
+
+local function inventoryChangeCheck(dt)
+    -- TODO: skip when in shop UI or dialogue
+    local newItemsList = {}
+    for _, item in ipairs(types.Actor.inventory(self):getAll()) do
+        if itemsInInventory[item.id] ~= true then
+            table.insert(newItemsList, item.id)
+            -- don't re-add the item
+            itemsInInventory[item.id] = true
+        end
+    end
+    if #newItemsList > 0 then
+        core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
             player = self,
-            cellID = lastCellID,
-            npcThefts = npcThefts,
-            factionThefts = factionThefts
+            cellID = self.cell.id,
+            itemsList = newItemsList,
         })
     end
-    settings.debugPrint("calculateTheft() end")
 end
 
-local function cellChanged()
-    local firstRun = lastCellID == nil
-    settings.debugPrint("cellChanged() start. firstRun="..tostring(firstRun))
-    -- first, check for theft.
-    if firstRun ~= true then
-        calculateTheft()
-    end
-
-    -- reset for new cell.
-    lastCellID = self.cell.id
-    spottedByActorRecordID = {}
-    actorRecordIDtoInstance = {}
-    spottedByFactionID = {}
-    spotted = false
-    warnCooldownTimer = 0
-
-    -- add ownership for all items in cell
-    core.sendGlobalEvent("ernOnGetAllOwnedItems", {
-        player = self,
-        cellID = self.cell.id,
-        fromSave = firstRun
-    })
-    settings.debugPrint("cellChanged() end")
-end
-
-local function ownershipInfo(data)
-    settings.debugPrint("ownershipInfo(" .. data.cellID .. ") start")
-    if data.cellID == self.cell.id then
-        itemsInCellOwnership = data.itemIDtoOwnership
-    end
-    settings.debugPrint("ownershipInfo() end")
-end
+addInfrequentUpdateCallback("inventory", 0.1, inventoryChangeCheck)
 
 local function onUpdate(dt)
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
-        -- cell change
-        cellChanged()
-    end
 
-    warnCooldownTimer = warnCooldownTimer - dt
-
-    for _, actor in ipairs(nearby.actors) do
-        -- check for detectiong
-        if spottedByActorRecordID[actor.id] == nil then
-            local isActive = core.sound.isSayActive(actor)
-            if isActive then
-                local actorRecord = types.NPC.record(actor)
-                if actorRecord ~= nil then
-                    spottedByActorRecordID[actor.id] = true
-                    spottedByActorRecordID[actorRecord.id] = true
-                    actorRecordIDtoInstance[actorRecord.id] = actor
-                    settings.debugPrint("added " .. actorRecord.id .. " to spotted map.")
-                    -- also track for all factions
-                    for _, factionId in pairs(types.NPC.getFactions(actor)) do
-                        if spottedByFactionID[factionId] == nil then
-                            spottedByFactionID[factionId] = {}
-                        end
-                        table.insert(spottedByFactionID[factionId], actor)
-                        settings.debugPrint(
-                            "added " .. actorRecord.id .. " to " .. factionId .. " spotted list. size: " ..
-                                #spottedByFactionID[factionId])
-                    end
-                    spotted = true
-                    -- Send notice if sneaking.
-                    if sneaking and (warnCooldownTimer <= 0) then
-                        warnCooldownTimer = warnCooldown
-                        local npcName = types.NPC.record(actor).name
-                        ui.showMessage(localization("showSpottedMessage", {
-                            actorName = npcName
-                        }))
-                    end
-                end
-            end
+        if lastCellID ~= nil then
+            -- we loaded from a save.
+            core.sendGlobalEvent(settings.MOD_NAME .. "onCellExit", {
+                player = self,
+                cellID = lastCellID
+            })
         end
+        core.sendGlobalEvent(settings.MOD_NAME .. "onCellEnter", {
+            player = self,
+            cellID = self.cell.id
+        })
+        lastCellID = self.cell.id
+
+        -- reset per-cell state
+        spottedByActorID = {}
+        spotted = false
+        warnCooldownTimer = 0
+        trackInventory()
+
+        -- don't run other checks this frame.
+        -- fewer frame drops this way.
+        return
     end
+
+    infrequentUpdate(dt)
 end
 
 return {
     eventHandlers = {
         ernShowWantedMessage = showWantedMessage,
-        ernShowExpelledMessage = showExpelledMessage,
-        ernOwnershipInfo = ownershipInfo
+        ernShowExpelledMessage = showExpelledMessage
     },
     engineHandlers = {
         onUpdate = onUpdate

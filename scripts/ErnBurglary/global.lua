@@ -27,6 +27,7 @@ end
 -- Init settings first to init storage which is used everywhere.
 settings.initSettings()
 
+-- thieveryTracker persists player+cell namespaced info.
 local thieveryTracker = storage.globalSection(settings.MOD_NAME .. "thieveryTracker")
 thieveryTracker:setLifeTime(storage.LIFE_TIME.Temporary)
 
@@ -36,6 +37,37 @@ end
 
 local function loadState(saved)
     thieveryTracker:reset(saved)
+end
+
+local function thieveryKey(cellID, playerID)
+    if (cellID == nil) or (cellID == "") then
+        error("thieveryKey() bad cellID")
+    end
+    if (playerID == nil) or (playerID == "") then
+        error("thieveryKey() bad playerID")
+    end
+    return "tk_" .. tostring(playerID) .. "_" .. tostring(cellID)
+end
+
+local function getCellState(cellID, playerID)
+    local state = thieveryTracker:get(thieveryKey(cellID, playerID))
+    if state ~= nil then
+        return state
+    end
+    return {
+        cellID = cellID,
+        playerID = playerID,
+        -- itemIDtoOwnership is map of item instance id to actor id.
+        itemIDtoOwnership = {},
+        -- spottedByActorId is a map of actor id -> true
+        spottedByActorId = {},
+        -- newItems is a list of new items the player picked up while in the cell.
+        newItems = {},
+    }
+end
+
+local function saveCellState(state)
+    return thieveryTracker:set(thieveryKey(state.cellID, state.playerID), state)
 end
 
 local function serializeOwner(owner)
@@ -49,55 +81,140 @@ local function serializeOwner(owner)
     }
 end
 
-local function onGetAllOwnedItems(data)
-    settings.debugPrint("onGetAllOwnedItems() start")
-    if (data == nil) or (data.cellID == nil) or (data.player == nil) then
-        error("onGetAllOwnedItems() bad data")
-        return
+local function getInventoryOwnership(inventory)
+    local itemIDtoOwnership = {}
+    for _, itemInContainer in ipairs(inventory:getAll()) do
+        itemIDtoOwnership[itemInContainer.id] = serializeOwner(itemInContainer.owner)
     end
+    return itemIDtoOwnership
+end
 
-    if data.fromSave then
-        settings.debugPrint("onGetAllOwnedItems() getting ownership from save")
-        local ownership = thieveryTracker:get(data.player.id .. data.cellID)
-        if ownership ~= nil then
-            data.player:sendEvent("ernOwnershipInfo", {
-                cellID = data.cellID,
-                itemIDtoOwnership = ownership
-            })
-            settings.debugPrint("onGetAllOwnedItems() end")
-        end
-    else
-        thieveryTracker:set(data.player.id .. data.cellID, nil)
-    end
+-- trackOwnedItems resets state.itemIDtoOwnership.
+local function trackOwnedItems(cellID, playerID)
+    settings.debugPrint("trackOwnedItems(" .. tostring(cellID) .. ") start")
 
-    local cell = world.getCellById(data.cellID)
+    local cell = world.getCellById(cellID)
     if cell == nil then
-        error("bad cell " .. data.cellID)
+        error("bad cell " .. cellID)
         return
     end
     settings.debugPrint("Finding owned items in " .. cell.name)
 
-    local itemIDtoOwnership = {}
+    local state = getCellState(cellID, playerID)
+    -- reset to empty.
+    state.itemIDtoOwnership = {}
+
+    -- Save ownership state for loose items and actor inventories.
     for _, item in ipairs(cell:getAll()) do
         if types.Item.objectIsInstance(item) then
-            itemIDtoOwnership[item.id] = serializeOwner(item.owner)
-        elseif types.Container.objectIsInstance(item) then
-            for _, itemInContainer in ipairs(types.Container.inventory(item):getAll()) do
-                itemIDtoOwnership[itemInContainer.id] = serializeOwner(itemInContainer.owner)
-            end
+            state.itemIDtoOwnership[item.id] = serializeOwner(item.owner)
         elseif types.NPC.objectIsInstance(item) then
-            for _, itemInNPC in ipairs(types.NPC.inventory(item):getAll()) do
-                itemIDtoOwnership[itemInNPC.id] = serializeOwner(itemInNPC.owner)
+            for k, v in pairs(getInventoryOwnership(types.NPC.inventory(item))) do
+                state.itemIDtoOwnership[k] = v
             end
         end
     end
 
-    thieveryTracker:set(data.player.id .. data.cellID, itemIDtoOwnership)
-    data.player:sendEvent("ernOwnershipInfo", {
-        cellID = data.cellID,
-        itemIDtoOwnership = itemIDtoOwnership
-    })
-    settings.debugPrint("onGetAllOwnedItems() end")
+    saveCellState(state)
+
+    settings.debugPrint("trackOwnedItems(" .. tostring(cellID) .. ") end")
+end
+
+-- Save ownership data for containers when they are activated.
+-- Adds elements to state.itemIDtoOwnership.
+local function onActivate(object, actor)
+    if types.Player.objectIsInstance(actor) and types.Container.objectIsInstance(object) then
+        local inventory = types.Container.inventory(object)
+        if inventory:isResolved() ~= true then
+            inventory:resolve()
+            local state = getCellState(actor.cell.id, actor.id)
+            for k, v in pairs(getInventoryOwnership(inventory)) do
+                state.itemIDtoOwnership[k] = v
+            end
+            saveCellState(state)
+        end
+    end
+end
+
+-- onSpotted is called when a player is spotted by an NPC.
+-- params:
+-- player
+-- cellID
+-- npc
+local function onSpotted(data)
+    local state = getCellState(data.cellID, data.player.id)
+    state.spottedByActorId[data.npc.id] = true
+    saveCellState(state)
+end
+
+-- params:
+-- player
+-- cellID
+local function onCellEnter(data)
+    -- When we enter a cell, we need to persist ownership data
+    -- for all items. We have to do this because ownership data
+    -- is lost when the item is placed in the player's inventory.
+
+    -- This is actually totally broken because the item could legitimately
+    -- transfer ownership to the player when they buy something.
+    -- I have to detect when when the player is in the shop dialogue,
+    -- and not count those items.
+
+    trackOwnedItems(data.cellID, data.player.id)
+end
+
+local function npcIDsToInstances(cellID, npcIDList)
+    local cell = world.getCellById(cellID)
+    if cell == nil then
+        error("bad cell "..tostring(cellID))
+    end
+
+    local npcIDMap = {}
+    for _, id in npcIDList do
+        npcIDMap[id] = true
+    end
+
+    local out = {}
+    for _, npc in pairs(cell:getAll(types.NPC)) do
+        if npcIDMap[npc.id] ~= true then
+            out[npc.id] = npc
+        end
+    end
+    return out
+end
+
+local function filterDeadNPCs(npcIDtoInstanceMap)
+    local out = {}
+    for id, npcInstance in pairs(npcIDtoInstanceMap) do
+        if types.Actor.isDead(npcInstance) or types.Actor.isDeathFinished(npcInstance) then
+            settings.debugPrint("npc " .. npcInstance.id .. " is dead")
+        else
+            out[id] = npcInstance
+        end
+    end
+    return out
+end
+
+local function factionsOfNPCs(npcIDtoInstanceMap)
+    local out = {}
+    for _, npcInstance in pairs(npcIDtoInstanceMap) do
+        for _, faction in ipairs(types.NPC.getFactions(npcInstance)) do
+            out[faction] = true
+        end
+    end
+    return out
+end
+
+local function atLeastRank(npc, factionID, rank)
+    local selfRank = types.NPC.getFactionRank(npc, factionID)
+    settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
+    if selfRank == nil then
+        return false
+    elseif (rank == nil) then
+        return true
+    else
+        return selfRank >= rank
+    end
 end
 
 local function handleTheftFromNPC(player, npc, value)
@@ -141,7 +258,7 @@ local function handleTheftFromFaction(player, faction, value)
     for _, playerFaction in ipairs(types.NPC.getFactions(player)) do
         if playerFaction == faction then
             types.NPC.expel(player, playerFaction)
-            data.player:sendEvent("ernShowExpelledMessage", {
+            player:sendEvent("ernShowExpelledMessage", {
                 faction = faction
             })
             settings.debugPrint("Expelled.")
@@ -149,65 +266,95 @@ local function handleTheftFromFaction(player, faction, value)
     end
 end
 
--- data has params:
--- player, who is the thief
--- cellID the theft occurred in
--- npcThefts, which is a map of npc record id -> value of theft
--- factionThefts, which is a map of faction id -> value of theft
-local function onReported(data)
-    settings.debugPrint("onReported() start")
-    if (data == nil) or (data.player == nil) then
-        error("onReported() bad data")
-        return
+-- params:
+-- player
+-- cellID
+local function onCellExit(data)
+    -- This is where the magic happens, when we resolve which items have
+    -- been stolen, and from whom.
+    local state = getCellState(data.cellID, data.player.id)
+
+    -- list of living actors that spotted the player.
+    local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(data.cellID, state.spottedByActorId))
+    local spottedByFactionID = factionsOfNPCs(spottedByActorInstance)
+
+    local npcRecordToInstance = {}
+    for _, instance in ipairs(spottedByActorInstance) do
+        npcRecordToInstance[instance.recordId] = instance
     end
 
-    -- The NPC owner is a record ID instead of an actor instance.
-    -- I need the actual instance, though.
-    local cell = world.getCellById(data.cellID)
-    if cell == nil then
-        error("bad cell " .. data.cellID)
-        return
-    end
-    local npcMap = {}
-    for _, npc in ipairs(cell:getAll(types.NPC)) do
-        npcMap[types.NPC.record(npc).id] = npc
-    end
+    local totalTheftValue = 0
 
-    local totalValue = 0
-    for owner, value in pairs(data.npcThefts) do
-        local npcInstance = npcMap[owner]
+    -- indexed by npc instance id
+    local npcOwnerTheftValue = {}
+    -- indexed by faction id
+    local factionOwnerTheftValue = {}
 
-        if (value == nil) or (value <= 0) then
-            settings.debugPrint("nil value")
-        else
-            totalValue = totalValue + value
-            handleTheftFromNPC(data.player, npcMap[owner], value)
+    -- build up value of all stolen goods
+    for _, newItem in ipairs(state.newItems) do
+        local itemRecord = newItem.type.record(newItem)
+        local owner = state.itemIDtoOwnership[newItem]
+        if (owner == nil) then
+            -- the item is not owned.
+        elseif (owner.recordId ~= nil) then
+            -- the item is owned by an individual.
+            -- if that individual is alive, they will report.
+            local instance = npcRecordToInstance[owner.recordId]
+            if (instance ~= nil) and (spottedByActorInstance[instance.id]) then
+                local value = tonumber(itemRecord.value)
+                totalTheftValue = totalTheftValue + value
+                npcOwnerTheftValue[instance.id] = npcOwnerTheftValue[instance.id] + value
+            end
+        elseif (owner.factionId ~= nil) and atLeastRank(data.player, owner.factionId, owner.factionRank) then
+            -- the item is owned by a faction.
+            -- if any members of the faction spotted the player,
+            -- they will report it.
+            if spottedByFactionID[owner.factionId] then
+                local value = tonumber(itemRecord.value)
+                totalTheftValue = totalTheftValue + value
+                factionOwnerTheftValue[owner.factionId] = factionOwnerTheftValue[owner.factionId] + value
+            end
         end
-
-    end
-    for owner, value in pairs(data.factionThefts) do
-        -- faction witenesses have already been checked for death.
-        if (value == nil) or (value <= 0) then
-            settings.debugPrint("nil value")
-        else
-            totalValue = totalValue + value
-            handleTheftFromFaction(data.player, owner, value)
-        end
     end
 
-    data.player:sendEvent("ernShowWantedMessage", {
-        value = totalValue
-    })
-    settings.debugPrint("onReported() end")
+    -- punish for npc theft
+    for npcID, value in pairs(npcOwnerTheftValue) do
+        handleTheftFromNPC(data.player, spottedByActorInstance[npcID], value)
+    end
+    -- punish for faction theft
+    for factionID, value in pairs(factionOwnerTheftValue) do
+        handleTheftFromFaction(data.player, factionOwnerTheftValue[factionID], value)
+    end
+
+    if totalTheftValue > 0 then
+        data.player:sendEvent("ernShowWantedMessage", {
+            value = totalTheftValue
+        })
+    end
+end
+
+-- params:
+-- player
+-- cellID
+-- itemsList
+local function onNewItems(data)
+    local state = getCellState(data.cellID, data.player.id)
+    for _, item in data.itemsList do
+        table.insert(state.newItems, item)
+    end
+    saveCellState(state)
 end
 
 return {
     eventHandlers = {
-        ernOnReported = onReported,
-        ernOnGetAllOwnedItems = onGetAllOwnedItems
+        [settings.MOD_NAME .. "onSpotted"] = onSpotted,
+        [settings.MOD_NAME .. "onCellEnter"] = onCellEnter,
+        [settings.MOD_NAME .. "onCellExit"] = onCellExit,
+        [settings.MOD_NAME .. "onNewItem"] = onNewItems
     },
     engineHandlers = {
         onSave = saveState,
-        onLoad = loadState
+        onLoad = loadState,
+        onActivate = onActivate
     }
 }
