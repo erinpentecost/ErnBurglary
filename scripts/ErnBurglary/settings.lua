@@ -54,7 +54,7 @@ local function initSettings()
                 key = "inferOwnership",
                 name = "inferOwnership_name",
                 description = "inferOwnership_description",
-                default = true,
+                default = false,
                 renderer = "checkbox"
             },
             {

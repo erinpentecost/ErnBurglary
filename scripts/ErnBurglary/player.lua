@@ -44,6 +44,9 @@ local spotted = false
 local sneaking = false
 local warnCooldownTimer = 0
 
+local noWitnessesMessageReceivedCooldownTimer = 0
+local noWitnessesMessageReceived = false
+
 -- forgiveNewItems is set to true when we enter a barter window.
 -- it lets us know that we shouldn't count the next batch of new items
 -- as stolen.
@@ -100,6 +103,10 @@ end
 
 registerHandlers()
 
+local function showNoWitnessesMessage(data)
+    noWitnessesMessageReceived = true
+end
+
 local infrequentMap = {}
 local function addInfrequentUpdateCallback(id, minDelta, callback)
     infrequentMap[id] = {
@@ -118,6 +125,22 @@ local function infrequentUpdate(dt)
     end
 end
 
+-- TODO: re-integrate
+local function garbageClear()
+    noWitnessesMessageReceivedCooldownTimer = noWitnessesMessageReceivedCooldownTimer - dt
+    if spotted and noWitnessesMessageReceived then
+        settings.debugPrint("showNoWitnessesMessage")
+        noWitnessesMessageReceived = false
+        spotted = false
+        spottedByActorID = {}
+        warnCooldownTimer = 0
+        if noWitnessesMessageReceivedCooldownTimer <= 0 then
+            ui.showMessage(localization("showNoWitnessesMessage", {}))
+            noWitnessesMessageReceivedCooldownTimer = 2
+        end
+    end
+end
+
 local function detectionCheck(dt)
     warnCooldownTimer = warnCooldownTimer - dt
     for _, actor in ipairs(nearby.actors) do
@@ -128,6 +151,7 @@ local function detectionCheck(dt)
                 -- this isn't great because it might be idle sounds
                 -- TODO: add nearby.castRay check to see if line of sight exists, too
                 spottedByActorID[actor.id] = true
+                settings.debugPrint("sending spotted by event for " .. actor.recordId)
                 core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
                     player = self,
                     npc = actor,
@@ -154,7 +178,7 @@ local function inventoryChangeCheck(dt)
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
         if itemsInInventory[item.id] == nil then
             table.insert(newItemsList, item)
-            settings.debugPrint("found new item: " .. aux_util.deepToString(item,2))
+            settings.debugPrint("found new item: " .. aux_util.deepToString(item, 2))
             -- don't re-add the item
             itemsInInventory[item.id] = item
         end
@@ -168,7 +192,7 @@ local function inventoryChangeCheck(dt)
         core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
             player = self,
             cellID = self.cell.id,
-            itemsList = newItemsList,
+            itemsList = newItemsList
         })
     end
 end
@@ -180,23 +204,21 @@ local function onUpdate(dt)
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
 
-        if lastCellID ~= nil then
-            -- we loaded from a save.
-            core.sendGlobalEvent(settings.MOD_NAME .. "onCellExit", {
-                player = self,
-                cellID = lastCellID
-            })
-        end
-        core.sendGlobalEvent(settings.MOD_NAME .. "onCellEnter", {
+
+        core.sendGlobalEvent(settings.MOD_NAME .. "onCellChange", {
             player = self,
-            cellID = self.cell.id
+            lastCellID = lastCellID,
+            newCellID = self.cell.id
         })
+
         lastCellID = self.cell.id
 
         -- reset per-cell state
         spottedByActorID = {}
         spotted = false
         warnCooldownTimer = 0
+        noWitnessesMessageReceivedCooldownTimer = 0
+        noWitnessesMessageReceived = false
         trackInventory()
 
         -- don't run other checks this frame.
@@ -218,11 +240,11 @@ return {
     eventHandlers = {
         [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
-        [settings.MOD_NAME .. "onOpenContainer"] = onOpenContainer,
-        UiModeChanged = UiModeChanged,
+        [settings.MOD_NAME .. "showNoWitnessesMessage"] = showNoWitnessesMessage,
+        UiModeChanged = UiModeChanged
     },
     engineHandlers = {
-        onUpdate = onUpdate,
+        onUpdate = onUpdate
     }
 }
 

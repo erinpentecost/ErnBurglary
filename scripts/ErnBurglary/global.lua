@@ -33,11 +33,13 @@ settings.initSettings()
 local persistedState = {}
 
 local function saveState()
-    return persistedState
+    -- TODO: re-enable
+    --return persistedState
 end
 
 local function loadState(saved)
-    persistedState = saved
+    -- TODO: re-enable
+    --persistedState = saved
 end
 
 local function thieveryKey(cellID, playerID)
@@ -50,17 +52,14 @@ local function thieveryKey(cellID, playerID)
     return "tk_" .. tostring(playerID) .. "_" .. tostring(cellID)
 end
 
-local function getCellState(cellID, playerID)
-    local cellState = persistedState[thieveryKey(cellID, playerID)]
-    settings.debugPrint("getCellState(...) for player: " .. tostring(playerID) .. ", cell: " .. tostring(cellID))
-    -- settings.debugPrint("getCellState(" .. tostring(cellID) .. ", " .. tostring(playerID) .. "): " ..
-    --                        aux_util.deepToString(cellState, 3))
-    if cellState ~= nil then
-        return cellState
+local function newCellState(cellID, playerID)
+    local playerKey = playerID
+    if playerID.id ~= nil then
+        playerKey = playerID.id
     end
     return {
         cellID = cellID,
-        playerID = playerID,
+        playerID = playerKey,
         -- itemIDtoOwnership is map of item instance id to actor id.
         itemIDtoOwnership = {},
         -- spottedByActorId is a map of actor id -> true
@@ -71,11 +70,31 @@ local function getCellState(cellID, playerID)
     }
 end
 
+local function getCellState(cellID, playerID)
+    local playerKey = playerID
+    if playerID.id ~= nil then
+        playerKey = playerID.id
+    end
+    local cellState = persistedState[thieveryKey(cellID, playerKey)]
+    --settings.debugPrint("getCellState(...) for player: " .. tostring(playerID) .. ", cell: " .. tostring(cellID))
+    -- settings.debugPrint("getCellState(" .. tostring(cellID) .. ", " .. tostring(playerID) .. "): " ..
+    --                        aux_util.deepToString(cellState, 3))
+    if cellState ~= nil then
+        return cellState
+    end
+    return newCellState(cellID, playerKey)
+end
+
 local function saveCellState(cellState)
-    settings.debugPrint("saveCellState(...) for player: " .. tostring(cellState.playerID) .. ", cell: " ..
-                            tostring(cellState.cellID))
+    --settings.debugPrint("saveCellState(...) for player: " .. tostring(cellState.playerID) .. ", cell: " ..
+    --                        tostring(cellState.cellID))
     -- settings.debugPrint("saveCellState(" .. aux_util.deepToString(cellState, 3) .. ")")
     persistedState[thieveryKey(cellState.cellID, cellState.playerID)] = cellState
+end
+
+local function clearCellState(cellState)
+    settings.debugPrint("clearCellState(...) for player: " .. tostring(cellState.playerID) .. ", cell: " .. tostring(cellState.cellID))
+    persistedState[thieveryKey(cellState.cellID, cellState.playerID)] = newCellState(cellState.cellID, cellState.playerID)
 end
 
 -- trackOwnedItems resets state.itemIDtoOwnership.
@@ -200,6 +219,17 @@ end
 -- cellID
 local function onCellEnter(data)
     settings.debugPrint("onCellEnter(" .. aux_util.deepToString(data) .. ")")
+
+    -- clean up new cell
+    local cellState = getCellState(data.cellID, data.player.id)
+    clearCellState(cellState)
+
+    -- TODO: I'm going crazy
+    cellState = getCellState(data.cellID, data.player.id)
+    for id, val in pairs(cellState.spottedByActorId) do
+        settings.debugPrint("failed to clean "..id..": " .. aux_util.deepToString(val) .. ")")
+    end
+
     -- When we enter a cell, we need to persist ownership data
     -- for all items. We have to do this because ownership data
     -- is lost when the item is placed in the player's inventory.
@@ -212,21 +242,16 @@ local function onCellEnter(data)
     trackOwnedItems(data.cellID, data.player.id)
 end
 
-local function npcIDsToInstances(cellID, npcIDList)
+local function npcIDsToInstances(cellID, npcIDMap)
     local cell = world.getCellById(cellID)
     if cell == nil then
         error("bad cell " .. tostring(cellID))
     end
 
-    local npcIDMap = {}
-    for _, id in ipairs(npcIDList) do
-        npcIDMap[id] = true
-    end
-
     local out = {}
     for _, npc in pairs(cell:getAll(types.NPC)) do
         if npcIDMap[npc.id] ~= true then
-            settings.debugPrint("found NPC instance " .. npc.id .. ": " .. aux_util.deepToString(npc))
+            --settings.debugPrint("found NPC instance " .. npc.id .. ": " .. aux_util.deepToString(npc))
             out[npc.id] = npc
         end
     end
@@ -244,6 +269,16 @@ local function filterDeadNPCs(npcIDtoInstanceMap)
         end
     end
     return out
+end
+
+local function guardsExist(npcIDtoInstanceMap)
+    for id, npcInstance in pairs(npcIDtoInstanceMap) do
+        local record = types.NPC.record(npcInstance)
+        if string.lower(record.class) == "guard" then
+            return true
+        end
+    end
+    return false
 end
 
 local function factionsOfNPCs(npcIDtoInstanceMap)
@@ -279,6 +314,12 @@ local function atLeastRank(npc, factionID, rank)
     else
         return selfRank >= rank
     end
+end
+
+local function handleTheftSeenByGuard(player, value)
+    settings.debugPrint("handleTheftSeenByGuard(player, " .. value .. ")")
+    local currentCrime = types.Player.getCrimeLevel(player)
+    types.Player.setCrimeLevel(player, currentCrime + value)
 end
 
 local function handleTheftFromNPC(player, npc, value)
@@ -342,6 +383,9 @@ local function onCellExit(data)
     -- list of living actors that spotted the player.
     local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(data.cellID, cellState.spottedByActorId))
     local spottedByFactionID = factionsOfNPCs(spottedByActorInstance)
+    -- if guards spotted you, they will always report it.
+    local spottedByGuards = guardsExist(spottedByActorInstance)
+    settings.debugPrint("spotted by guards")
 
     local npcRecordToInstance = {}
     for _, instance in pairs(spottedByActorInstance) do
@@ -386,9 +430,11 @@ local function onCellExit(data)
 
             -- the item is owned by an individual.
             -- if that individual is alive, they will report.
+            -- instance can be nil if the actor is dead.
             local instance = npcRecordToInstance[owner.recordId]
-            if instance == nil then
-                error("failed to get actor instance for record " .. owner.recordId)
+            if (instance == nil) and spottedByGuards then
+                settings.debugPrint("owner is dead, but spotted by guards")
+                handleTheftSeenByGuard(data.player, value)
             elseif (spottedByActorInstance[instance.id]) then
                 settings.debugPrint("you were spotted taking " .. itemRecord.name)
                 totalTheftValue = totalTheftValue + value
@@ -405,7 +451,7 @@ local function onCellExit(data)
             -- the item is owned by a faction.
             -- if any members of the faction spotted the player,
             -- they will report it.
-            if spottedByFactionID[owner.factionId] == true then
+            if ((spottedByFactionID[owner.factionId] == true) or spottedByGuards) then
                 settings.debugPrint("you were spotted taking " .. itemRecord.name)
                 totalTheftValue = totalTheftValue + value
                 if factionOwnerTheftValue[owner.factionId] == nil then
@@ -430,6 +476,19 @@ local function onCellExit(data)
             value = totalTheftValue
         })
     end
+
+    -- clean up old cell
+    clearCellState(cellState)
+end
+
+local function onCellChange(data)
+    if (data == nil) or (data.player == nil) then
+        error("bad data")
+    end
+    if data.lastCellID ~= nil then
+        onCellExit({player=data.player,cellID=data.lastCellID})
+    end
+    onCellEnter({player=data.player,cellID=data.newCellID})
 end
 
 -- params:
@@ -452,16 +511,39 @@ local function onNewItems(data)
     saveCellState(cellState)
 end
 
+-- This just fires off the "no more witnesses" message.
+local updateDelay = 0
+local function onUpdate(dt)
+    updateDelay = updateDelay + dt
+    if updateDelay > 1.5 then
+        updateDelay = updateDelay - 1.5
+        -- loop through all players and check if they have witnesses
+        for _, player in ipairs(world.players) do
+            local cellState = getCellState(player.cell.id, player.id)
+            local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(player.cell.id, cellState.spottedByActorId))
+            local anyPresent = false
+            for _,  _ in pairs(spottedByActorInstance) do
+                anyPresent = true
+                break
+            end
+            if anyPresent == false then
+                player:sendEvent(settings.MOD_NAME .. "showNoWitnessesMessage", {})
+            end
+        end
+    end
+end
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "onSpotted"] = onSpotted,
-        [settings.MOD_NAME .. "onCellEnter"] = onCellEnter,
-        [settings.MOD_NAME .. "onCellExit"] = onCellExit,
+        [settings.MOD_NAME .. "onCellChange"] = onCellChange,
         [settings.MOD_NAME .. "onNewItem"] = onNewItems
     },
     engineHandlers = {
         onSave = saveState,
         onLoad = loadState,
-        onActivate = onActivate
+        onActivate = onActivate,
+        -- TODO: re-enable after debugging
+        --onUpdate = onUpdate,
     }
 }

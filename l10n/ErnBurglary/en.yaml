@@ -12,6 +12,7 @@ debugMode_description: "Print debug messages."
 
 showSpottedMessage: "You were spotted by {actorName}!"
 showWarningMessage: "You were spotted in the area earlier."
+showNoWitnessesMessage: "No more witnesses."
 
 showWantedMessage: "Your burglary of {value} gold worth of goods was noticed."
 showExpelledMessage: "You've been expelled from {factionName} due to theft."
