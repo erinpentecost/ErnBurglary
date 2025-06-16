@@ -104,7 +104,9 @@ end
 registerHandlers()
 
 local function showNoWitnessesMessage(data)
-    noWitnessesMessageReceived = true
+    if spotted then
+        noWitnessesMessageReceived = true
+    end
 end
 
 local infrequentMap = {}
@@ -125,15 +127,13 @@ local function infrequentUpdate(dt)
     end
 end
 
--- TODO: re-integrate
-local function garbageClear()
+local function allClear(dt)
     noWitnessesMessageReceivedCooldownTimer = noWitnessesMessageReceivedCooldownTimer - dt
     if spotted and noWitnessesMessageReceived then
         settings.debugPrint("showNoWitnessesMessage")
         noWitnessesMessageReceived = false
         spotted = false
         spottedByActorID = {}
-        warnCooldownTimer = 0
         if noWitnessesMessageReceivedCooldownTimer <= 0 then
             ui.showMessage(localization("showNoWitnessesMessage", {}))
             noWitnessesMessageReceivedCooldownTimer = 2
@@ -142,6 +142,8 @@ local function garbageClear()
 end
 
 local function detectionCheck(dt)
+    allClear(dt)
+
     warnCooldownTimer = warnCooldownTimer - dt
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
