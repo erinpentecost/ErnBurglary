@@ -31,7 +31,8 @@ interfaces.Settings.registerPage {
     description = "description"
 }
 
-local warnCooldown = 5
+-- warnCooldown stops us from spamming people
+local warnCooldown = 15
 
 -- lastCellID will be nil if loading from a save game.
 -- otherwise, it will be the cell we just moved from.
@@ -42,6 +43,11 @@ local spottedByActorID = {}
 local spotted = false
 local sneaking = false
 local warnCooldownTimer = 0
+
+-- forgiveNewItems is set to true when we enter a barter window.
+-- it lets us know that we shouldn't count the next batch of new items
+-- as stolen.
+local forgiveNewItems = false
 
 -- itemsInInventory is used to track changes in the
 -- player's inventory.
@@ -115,10 +121,12 @@ end
 local function detectionCheck(dt)
     warnCooldownTimer = warnCooldownTimer - dt
     for _, actor in ipairs(nearby.actors) do
-        -- check for detectiong
+        -- check for detection
         if spottedByActorID[actor.id] == nil then
             local isActive = core.sound.isSayActive(actor)
             if isActive then
+                -- this isn't great because it might be idle sounds
+                -- TODO: add nearby.castRay check to see if line of sight exists, too
                 spottedByActorID[actor.id] = true
                 core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
                     player = self,
@@ -142,7 +150,6 @@ end
 addInfrequentUpdateCallback("detection", 0.1, detectionCheck)
 
 local function inventoryChangeCheck(dt)
-    -- TODO: skip when in shop UI or dialogue!
     local newItemsList = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
         if itemsInInventory[item.id] == nil then
@@ -151,6 +158,11 @@ local function inventoryChangeCheck(dt)
             -- don't re-add the item
             itemsInInventory[item.id] = item
         end
+    end
+    if forgiveNewItems then
+        settings.debugPrint("forgave new items")
+        forgiveNewItems = false
+        return
     end
     if #newItemsList > 0 then
         core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
@@ -164,6 +176,7 @@ end
 addInfrequentUpdateCallback("inventory", 0.1, inventoryChangeCheck)
 
 local function onUpdate(dt)
+    -- this is not called when the game is paused.
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
 
@@ -194,7 +207,11 @@ local function onUpdate(dt)
     infrequentUpdate(dt)
 end
 
-local function onOpenContainer(data)
+local function UiModeChanged(data)
+    if data.oldMode == "Dialogue" then
+        settings.debugPrint("was in dialogue")
+        forgiveNewItems = true
+    end
 end
 
 return {
@@ -202,9 +219,10 @@ return {
         [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
         [settings.MOD_NAME .. "onOpenContainer"] = onOpenContainer,
+        UiModeChanged = UiModeChanged,
     },
     engineHandlers = {
-        onUpdate = onUpdate
+        onUpdate = onUpdate,
     }
 }
 
