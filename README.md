@@ -20,6 +20,9 @@ The punishment for red-handed theft is reduced to a token 1 gp in order to avoid
 - If all the witnesses die, you'll get another alert.
 - If you get caught when you leave, you'll get an alert.
 
+## How it Works
+If you're near an NPC and they say something, they will be marked as having spotted you. This also applies for idle sounds, since I haven't found a way to filter those out yet.
+
 ![a thief with a big bag, created with AI](title_image.jpg)
 
 ## Installing
