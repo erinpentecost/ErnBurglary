@@ -1,15 +1,24 @@
 # ErnBurglary
 OpenMW mod that overhauls theft. No longer will NPCs forget that you were in their house when all their gems were stolen.
 
-If an NPC greets you, they will remember that you were in the area (until you leave the area). If you steal things they own (even when they aren't watching you), you'll be caught once you leave the area.
+## Witnesses and Punishment
+If an NPC greets you, they will remember that you are in the area. If their stuff disappeared before you left, you'll be caught *after-the-fact*. This punishment is less severe than *red-handed* theft: the value of the stolen goods will be subtracted from the owner's disposition until it hits 0. Any leftover value will be converted into bounty.
 
-Getting caught this way will first deplete the NPC's dispostion by the value of the stolen goods, and if there's any left over it will be added to your bounty.
+Stolen items that belong to a faction will get reported if any member of that faction remembers you in the area. You can optionally reduce your faction reputation, and have the excess converted into bounty and explusion (if you are member).
 
-Same for items owned by factions, but your faction reputation is affected instead. If you're a member of the faction and manage to get a bounty from the theft, you'll also be expelled.
+Guards look out for everyone's items, not just their own.
 
-If everyone that greeted you died before you left the area, then there won't be anyone to report the theft.
+If witnesses are dead before you leave the area, they won't report the theft.
 
-You'll be warned if you were spotted in the area when you enter sneak mode.
+## Red-handed Theft
+The punishment for red-handed theft is reduced to a token 1 gp in order to avoid double-jeopardy. You'll be penalized when you leave.
+
+## Indicators
+- While you're spotted in the area, a 5pt Drain Sneak effect is applied. This is removed as soon as you're no longer spotted.
+- When you enter sneak mode, you'll get an alert if you were previously spotted.
+- If you're spotted while in sneak mode, you'll also get an alert.
+- If all the witnesses die, you'll get another alert.
+- If you get caught when you leave, you'll get an alert.
 
 ![a thief with a big bag, created with AI](title_image.jpg)
 
