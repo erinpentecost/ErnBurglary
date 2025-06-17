@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local interfaces = require("openmw.interfaces")
 local settings = require("scripts.ErnBurglary.settings")
+local say = require("scripts.ErnBurglary.say")
 local types = require("openmw.types")
 local nearby = require("openmw.nearby")
 local core = require("openmw.core")
@@ -145,13 +146,12 @@ local function detectionCheck(dt)
     allClear(dt)
 
     warnCooldownTimer = warnCooldownTimer - dt
+
+    -- find out which NPC is talking
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
         if spottedByActorID[actor.id] == nil then
-            local isActive = core.sound.isSayActive(actor)
-            if isActive then
-                -- this isn't great because it might be idle sounds
-                -- TODO: add nearby.castRay check to see if line of sight exists, too
+            if (core.sound.isSayActive(actor)) and (say.idle(actor) ~= true) then
                 spottedByActorID[actor.id] = true
                 settings.debugPrint("sending spotted by event for " .. actor.recordId)
                 core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
@@ -173,7 +173,7 @@ local function detectionCheck(dt)
     end
 end
 
-addInfrequentUpdateCallback("detection", 0.1, detectionCheck)
+addInfrequentUpdateCallback("detection", 0.11, detectionCheck)
 
 local function inventoryChangeCheck(dt)
     local newItemsList = {}
@@ -205,7 +205,6 @@ local function onUpdate(dt)
     -- this is not called when the game is paused.
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
-
 
         core.sendGlobalEvent(settings.MOD_NAME .. "onCellChange", {
             player = self,
