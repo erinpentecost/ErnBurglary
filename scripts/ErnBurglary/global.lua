@@ -409,6 +409,7 @@ local function onCellExit(data)
 
     local npcRecordToInstance = {}
     for _, instance in pairs(spottedByActorInstance) do
+        -- this is missing people
         npcRecordToInstance[instance.recordId] = instance
         settings.debugPrint("npcRecordToInstance[" .. instance.recordId .. "] = " .. aux_util.deepToString(instance))
     end
@@ -421,6 +422,7 @@ local function onCellExit(data)
     local factionOwnerTheftValue = {}
     local guardTheftValue = 0
 
+    settings.debugPrint("checking "..#cellState.newItems.." new items for theft...")
     -- build up value of all stolen goods
     for newItemID, newItem in pairs(cellState.newItems) do
         if newItem == nil then
@@ -444,6 +446,7 @@ local function onCellExit(data)
 
         if (owner == nil) then
             -- the item is not owned.
+            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. "): not owned by anyone")
         elseif (owner.recordId ~= nil) then
             settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
                                     tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
@@ -534,14 +537,11 @@ local function onNewItems(data)
     -- this is not called when the game is paused.
     settings.debugPrint("onNewItems(" .. aux_util.deepToString(data) .. ")")
     local cellState = getCellState(data.cellID, data.player.id)
-    for id, item in ipairs(data.itemsList) do
-        if (id == nil) then
-            error("id is nil")
-        end
+    for _, item in ipairs(data.itemsList) do
         if (item == nil) then
             error("item is nil")
         end
-        cellState.newItems[id] = item
+        cellState.newItems[item.id] = item
     end
     saveCellState(cellState)
 end

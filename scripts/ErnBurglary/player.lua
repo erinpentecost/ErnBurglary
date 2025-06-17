@@ -149,7 +149,7 @@ end
 local function isClose(actor)
     local len = (self.position - actor.position):length()
     --settings.debugPrint("len to "..actor.recordId..": "..tostring(len))
-    return len < 130
+    return len < 200
 end
 
 local function detectionCheck(dt)
@@ -210,6 +210,25 @@ local function inventoryChangeCheck(dt)
 end
 
 addInfrequentUpdateCallback("inventory", 0.1, inventoryChangeCheck)
+
+local function updateSpottedSpell()
+    if spotted then
+        types.Actor.activeSpells(self):add({
+            id = "ernburglary_spotted",
+            effects = {0},
+            ignoreSpellAbsorption = true,
+            ignoreReflect = true,
+        })
+    else
+        for _, spell in pairs(types.Actor.activeSpells(self)) do
+            if spell.id == "ernburglary_spotted" then
+                types.Actor.activeSpells(self):remove(spell.activeSpellId)
+            end
+        end
+    end
+end
+
+addInfrequentUpdateCallback("spottedSpell", 0.8, updateSpottedSpell)
 
 local function onUpdate(dt)
     -- this is not called when the game is paused.

@@ -31,4 +31,5 @@ Feel free to submit a PR to the [repo](https://github.com/erinpentecost/ErnBurgl
 
 ### omwaddon
 The omwaddon contains these entries:
-* theft penalty GMST set to 0
+* `fCrimeStealing` penalty set to 0.
+* `ernburglary_spotted` spell that contains the penalty for being spotted.
