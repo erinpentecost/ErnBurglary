@@ -26,6 +26,14 @@ local function debugMode()
     return settingsStore:get("debugMode")
 end
 
+local function bountyScale()
+    return settingsStore:get("bountyScale")
+end
+
+local function lenientFactions()
+    return settingsStore:get("lenientFactions")
+end
+
 local function inferOwnership()
     return settingsStore:get("inferOwnership")
 end
@@ -51,6 +59,25 @@ local function initSettings()
         permanentStorage = false,
         settings = {
             {
+                key = "bountyScale",
+                name = "bountyScale_name",
+                description = "bountyScale_description",
+                default = 1,
+                renderer = "number",
+                argument = {
+                    integer = false,
+                    min = 0,
+                    max = 100
+                }
+            },
+            {
+                key = "lenientFactions",
+                name = "lenientFactions_name",
+                description = "lenientFactions_description",
+                default = false,
+                renderer = "checkbox"
+            },
+            {
                 key = "inferOwnership",
                 name = "inferOwnership_name",
                 description = "inferOwnership_description",
@@ -73,6 +100,8 @@ return {
     settingsStore = settingsStore,
     MOD_NAME = MOD_NAME,
 
+    bountyScale = bountyScale,
+    lenientFactions = lenientFactions,
     inferOwnership = inferOwnership,
     debugMode = debugMode,
     debugPrint = debugPrint

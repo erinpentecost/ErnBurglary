@@ -142,6 +142,16 @@ local function allClear(dt)
     end
 end
 
+local function isTalking(actor)
+    return (core.sound.isSayActive(actor)) and (say.idle(actor) ~= true)
+end
+
+local function isClose(actor)
+    local len = (self.position - actor.position):length()
+    --settings.debugPrint("len to "..actor.recordId..": "..tostring(len))
+    return len < 130
+end
+
 local function detectionCheck(dt)
     allClear(dt)
 
@@ -151,7 +161,7 @@ local function detectionCheck(dt)
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
         if spottedByActorID[actor.id] == nil then
-            if (core.sound.isSayActive(actor)) and (say.idle(actor) ~= true) then
+            if isTalking(actor) and isClose(actor) then
                 spottedByActorID[actor.id] = true
                 settings.debugPrint("sending spotted by event for " .. actor.recordId)
                 core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {

@@ -4,6 +4,12 @@ description: "Make burglary not so easy by giving NPCs memories better than gold
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
 
+bountyScale_name: "Scale Bounty"
+bountyScale_description: "To determine the bounty for theft, multiply the stolen gold value by this number."
+
+lenientFactions_name: "Lenient Factions"
+lenientFactions_description: "Faction reputation won't drop and you won't get expelled if you're caught after-the-fact. You'll still accrue a bounty."
+
 inferOwnership_name: "Infer Ownership"
 inferOwnership_description: "Turns on fuzzy ownership logic for items when ownership can't be determined normally."
 

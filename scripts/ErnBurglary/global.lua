@@ -318,10 +318,20 @@ local function atLeastRank(npc, factionID, rank)
     end
 end
 
+local function increaseBounty(player, amount)
+    local currentCrime = types.Player.getCrimeLevel(player)
+    local delta = amount * settings.bountyScale()
+    if delta < 0 then
+        error("increaseBounty(player,"..amount..") would reduce bounty")
+        return
+    end
+    types.Player.setCrimeLevel(player, currentCrime + delta)
+end
+
 local function handleTheftSeenByGuard(player, value)
     settings.debugPrint("handleTheftSeenByGuard(player, " .. value .. ")")
-    local currentCrime = types.Player.getCrimeLevel(player)
-    types.Player.setCrimeLevel(player, currentCrime + value)
+    increaseBounty(player, value)
+    print("Theft seen by guard increased bounty by " .. value .. ".")
 end
 
 local function handleTheftFromNPC(player, npc, value)
@@ -337,8 +347,7 @@ local function handleTheftFromNPC(player, npc, value)
 
     -- we have leftover penalty.
     -- for now, just increase crime level
-    local currentCrime = types.Player.getCrimeLevel(player)
-    types.Player.setCrimeLevel(player, currentCrime + bountyPenalty)
+    increaseBounty(player, bountyPenalty)
 
     print("Theft from " .. npc.recordId .. " dropped disposition by " .. dispoPenalty .. " from " .. startDisposition ..
               ", and increased bounty by " .. bountyPenalty .. ".")
@@ -346,6 +355,12 @@ end
 
 local function handleTheftFromFaction(player, faction, value)
     settings.debugPrint("handleTheftFromFaction(player, " .. faction .. ", " .. value .. ")")
+
+    if settings.lenientFactions() then
+        increaseBounty(player, value)
+        print("Theft from " .. faction .. " increased bounty by " .. value)
+    end
+
     local startReputation = types.NPC.getFactionReputation(player, faction)
 
     local reputationPenalty = math.min(startReputation, value)
@@ -353,8 +368,7 @@ local function handleTheftFromFaction(player, faction, value)
 
     local bountyPenalty = value - reputationPenalty
 
-    local currentCrime = types.Player.getCrimeLevel(player)
-    types.Player.setCrimeLevel(player, currentCrime + bountyPenalty)
+    increaseBounty(player, bountyPenalty)
 
     local expelled = false
     if bountyPenalty > 0 then
@@ -405,6 +419,7 @@ local function onCellExit(data)
     local npcOwnerTheftValue = {}
     -- indexed by faction id
     local factionOwnerTheftValue = {}
+    local guardTheftValue = 0
 
     -- build up value of all stolen goods
     for newItemID, newItem in pairs(cellState.newItems) do
@@ -441,10 +456,9 @@ local function onCellExit(data)
             if (instance == nil) then
                 settings.debugPrint("can't find actor instance for " .. tostring(owner.recordId))
                 if spottedByGuards then
+                    guardTheftValue = guardTheftValue + value
                     settings.debugPrint("theft spotted by guards")
                     totalTheftValue = totalTheftValue + value
-                    -- you can do this for each item.
-                    handleTheftSeenByGuard(data.player, value)
                 end
             elseif (spottedByActorInstance[instance.id]) then
                 settings.debugPrint("you were spotted taking " .. itemRecord.name)
@@ -480,6 +494,10 @@ local function onCellExit(data)
     -- punish for faction theft
     for factionID, value in pairs(factionOwnerTheftValue) do
         handleTheftFromFaction(data.player, factionID, value)
+    end
+
+    if guardTheftValue > 0 then
+        handleTheftSeenByGuard(data.player, guardTheftValue)
     end
 
     if totalTheftValue > 0 then
