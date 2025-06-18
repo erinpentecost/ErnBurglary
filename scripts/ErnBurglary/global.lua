@@ -171,9 +171,12 @@ end
 -- Save ownership data for containers when they are activated.
 -- Adds elements to state.itemIDtoOwnership.
 local function onActivate(object, actor)
-    -- I can't get the owner of a container.
 
-    if types.Player.objectIsInstance(actor) and types.Container.objectIsInstance(object) then
+    if types.Player.objectIsInstance(actor) ~= true then
+        return
+    end
+
+    if types.Container.objectIsInstance(object) then
         settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player)")
         local inventory = types.Container.inventory(object)
         if inventory:isResolved() ~= true then
@@ -205,6 +208,19 @@ local function onActivate(object, actor)
             end
         end
         saveCellState(cellState)
+    elseif types.Item.objectIsInstance(object) then
+        -- This is for Shop Around compliance.
+        -- If we are picking up an item off a shelf, check to see if it still
+        -- has ownership. If it doesn't, remove it from the tracked list.
+        if common.serializeOwner(object.owner) == nil then
+            -- remove from tracker
+            local cellState = getCellState(actor.cell.id, actor.id)
+            if cellState.itemIDtoOwnership[object.id] ~= nil then
+                settings.debugPrint("Removing " .. object.recordId .. " from ownership tracking.")
+                cellState.itemIDtoOwnership[object.id] = nil
+                saveCellState(cellState)
+            end
+        end
     end
 end
 
@@ -233,11 +249,6 @@ local function onCellEnter(data)
     -- When we enter a cell, we need to persist ownership data
     -- for all items. We have to do this because ownership data
     -- is lost when the item is placed in the player's inventory.
-
-    -- This is actually totally broken because the item could legitimately
-    -- transfer ownership to the player when they buy something.
-    -- I have to detect when when the player is in the shop dialogue,
-    -- and not count those items.
 
     trackOwnedItems(data.cellID, data.player.id)
 
@@ -322,9 +333,10 @@ local function increaseBounty(player, amount)
     local currentCrime = types.Player.getCrimeLevel(player)
     local delta = amount * settings.bountyScale()
     if delta < 0 then
-        error("increaseBounty(player,"..amount..") would reduce bounty")
+        error("increaseBounty(player," .. amount .. ") would reduce bounty")
         return
     end
+    print("Increased bounty by " .. delta)
     types.Player.setCrimeLevel(player, currentCrime + delta)
 end
 
@@ -337,7 +349,6 @@ end
 local function handleTheftFromNPC(player, npc, value)
     settings.debugPrint("handleTheftFromNPC(player, " .. npc.id .. ", " .. value .. ")")
     -- npc is an instance.
-    -- always reduce disposition. 2gp == 1 disposition
     local startDisposition = types.NPC.getBaseDisposition(npc, player)
 
     local dispoPenalty = math.min(startDisposition, value)
@@ -350,7 +361,7 @@ local function handleTheftFromNPC(player, npc, value)
     increaseBounty(player, bountyPenalty)
 
     print("Theft from " .. npc.recordId .. " dropped disposition by " .. dispoPenalty .. " from " .. startDisposition ..
-              ", and increased bounty by " .. bountyPenalty .. ".")
+              ".")
 end
 
 local function handleTheftFromFaction(player, faction, value)
@@ -358,11 +369,13 @@ local function handleTheftFromFaction(player, faction, value)
 
     if settings.lenientFactions() then
         increaseBounty(player, value)
-        print("Theft from " .. faction .. " increased bounty by " .. value)
+        print("Theft from " .. faction .. ".")
     end
 
     local startReputation = types.NPC.getFactionReputation(player, faction)
 
+    -- faction reputation is hard to fix. consider making
+    -- this less a pain.
     local reputationPenalty = math.min(startReputation, value)
     types.NPC.modifyFactionReputation(player, faction, -1 * reputationPenalty)
 
@@ -384,7 +397,7 @@ local function handleTheftFromFaction(player, faction, value)
     end
 
     print("Theft from " .. faction .. " dropped reputation by " .. reputationPenalty .. " from " .. startReputation ..
-              ", and increased bounty by " .. bountyPenalty .. ". Expelled: " .. tostring(expelled))
+              ". Expelled: " .. tostring(expelled))
 end
 
 -- params:
@@ -422,7 +435,7 @@ local function onCellExit(data)
     local factionOwnerTheftValue = {}
     local guardTheftValue = 0
 
-    settings.debugPrint("checking "..#cellState.newItems.." new items for theft...")
+    settings.debugPrint("checking " .. #cellState.newItems .. " new items for theft...")
     -- build up value of all stolen goods
     for newItemID, newItem in pairs(cellState.newItems) do
         if newItem == nil then
@@ -446,7 +459,8 @@ local function onCellExit(data)
 
         if (owner == nil) then
             -- the item is not owned.
-            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. "): not owned by anyone")
+            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id ..
+                                    "): not owned by anyone")
         elseif (owner.recordId ~= nil) then
             settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
                                     tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
