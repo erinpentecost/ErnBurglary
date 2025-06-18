@@ -1,10 +1,14 @@
 # ErnBurglary
 OpenMW mod that overhauls theft. No longer will NPCs forget that you were in their house when all their gems were stolen.
 
+
+## THIS IS AN ALPHA RELEASE
+There are still some bugs. Looting from bandits will also count as burglary (unless they are dead). Stacks of items aren't handled well. These will be fixed later.
+
 ## Witnesses and Punishment
 If an NPC greets you, they will remember that you are in the area. If their stuff disappeared before you left, you'll be caught *after-the-fact*. This punishment is less severe than *red-handed* theft: the value of the stolen goods will be subtracted from the owner's disposition until it hits 0. Any leftover value will be converted into bounty.
 
-Stolen items that belong to a faction will get reported if any member of that faction remembers you in the area. You can optionally reduce your faction reputation, and have the excess converted into bounty and explusion (if you are member).
+Stolen items that belong to a faction will get reported if any member of that faction remembers you in the area. You can optionally reduce your faction reputation, and have the excess converted into bounty and explusion (if you are a member).
 
 Guards look out for everyone's items, not just their own.
 
@@ -20,8 +24,28 @@ The punishment for red-handed theft is reduced to a token 1 gp in order to avoid
 - If all the witnesses die, you'll get another alert.
 - If you get caught when you leave, you'll get an alert.
 
+You can optionally turn off all the alerts except the last one.
+
 ## How it Works
-If you're near an NPC and they say something, they will be marked as having spotted you. This also applies for idle sounds, since I haven't found a way to filter those out yet.
+If you're near an NPC and they say something, the mod checks if you are sneaking. If you are sneaking, the mod reproduces the same vanilla game logic for sneak detection. If you fail that check, then the NPC is marked as having spotted you.
+
+Every item you pick up is also tracked, unless you picked it up during a dialogue or barter screen. (This might work now for Pause Control; I haven't tested it.)
+
+When you leave the cell, the items you picked up are matched with their owners, punishment is determined, and your Spotted flag is cleared.
+
+## Compatibility
+
+### Yes
+- Harder Better Faster Stronger.
+
+### Maybe
+- Pause Control - as of v0.6.0
+- Shop Around - as of v0.6.0
+- Devilish Sleep Spell (OpenMW 0.49)
+
+### No
+- Regionally Known Criminals
+
 
 ![a thief with a big bag, created with AI](title_image.jpg)
 

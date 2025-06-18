@@ -26,6 +26,10 @@ local function debugMode()
     return settingsStore:get("debugMode")
 end
 
+local function quietMode()
+    return settingsStore:get("quietMode")
+end
+
 local function bountyScale()
     return settingsStore:get("bountyScale")
 end
@@ -71,6 +75,13 @@ local function initSettings()
                 }
             },
             {
+                key = "quietMode",
+                name = "quietMode_name",
+                description = "quietMode_description",
+                default = false,
+                renderer = "checkbox"
+            },
+            {
                 key = "lenientFactions",
                 name = "lenientFactions_name",
                 description = "lenientFactions_description",
@@ -100,6 +111,7 @@ return {
     settingsStore = settingsStore,
     MOD_NAME = MOD_NAME,
 
+    quietMode = quietMode,
     bountyScale = bountyScale,
     lenientFactions = lenientFactions,
     inferOwnership = inferOwnership,
