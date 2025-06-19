@@ -4,10 +4,13 @@ description: "Make burglary not so easy by giving NPCs memories better than gold
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
 
+revertBounties_name: "No Witness No Bounty"
+revertBounties_description: "This is a re-implementation of the features found in the excellent 'No Witness No Bounty' mod."
+
 quietMode_name: "Fewer Notifications"
 quietMode_description: "Turn this on to only alerted when your theft was noticed."
 
-bountyScale_name: "Scale Bounty"
+bountyScale_name: "Theft Scale Bounty"
 bountyScale_description: "To determine the bounty for theft, multiply the stolen gold value by this number."
 
 lenientFactions_name: "Lenient Factions"

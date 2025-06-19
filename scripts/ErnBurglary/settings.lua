@@ -26,6 +26,10 @@ local function debugMode()
     return settingsStore:get("debugMode")
 end
 
+local function revertBounties()
+    return settingsStore:get("revertBounties")
+end
+
 local function quietMode()
     return settingsStore:get("quietMode")
 end
@@ -61,41 +65,42 @@ local function initSettings()
         description = "modSettingsDesc",
         page = MOD_NAME,
         permanentStorage = false,
-        settings = {
-            {
-                key = "bountyScale",
-                name = "bountyScale_name",
-                description = "bountyScale_description",
-                default = 1,
-                renderer = "number",
-                argument = {
-                    integer = false,
-                    min = 0,
-                    max = 100
-                }
-            },
-            {
-                key = "quietMode",
-                name = "quietMode_name",
-                description = "quietMode_description",
-                default = false,
-                renderer = "checkbox"
-            },
-            {
-                key = "lenientFactions",
-                name = "lenientFactions_name",
-                description = "lenientFactions_description",
-                default = false,
-                renderer = "checkbox"
-            },
-            {
-                key = "inferOwnership",
-                name = "inferOwnership_name",
-                description = "inferOwnership_description",
-                default = false,
-                renderer = "checkbox"
-            },
-            {
+        settings = {{
+            key = "bountyScale",
+            name = "bountyScale_name",
+            description = "bountyScale_description",
+            default = 1,
+            renderer = "number",
+            argument = {
+                integer = false,
+                min = 0,
+                max = 100
+            }
+        }, {
+            key = "revertBounties",
+            name = "revertBounties_name",
+            description = "revertBounties_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
+            key = "quietMode",
+            name = "quietMode_name",
+            description = "quietMode_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
+            key = "lenientFactions",
+            name = "lenientFactions_name",
+            description = "lenientFactions_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
+            key = "inferOwnership",
+            name = "inferOwnership_name",
+            description = "inferOwnership_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
             key = "debugMode",
             name = "debugMode_name",
             description = "debugMode_description",
@@ -111,6 +116,7 @@ return {
     settingsStore = settingsStore,
     MOD_NAME = MOD_NAME,
 
+    revertBounties = revertBounties,
     quietMode = quietMode,
     bountyScale = bountyScale,
     lenientFactions = lenientFactions,
