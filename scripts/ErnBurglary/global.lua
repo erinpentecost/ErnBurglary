@@ -68,7 +68,9 @@ local function newCellState(cellID, playerID)
         spottedByActorId = {},
         -- newItems is a map of new items the player picked up while in the cell.
         -- item id -> item instance
-        newItems = {}
+        newItems = {},
+        -- startingBounty is the player's bounty when they enter a cell.
+        startingBounty = 0
     }
 end
 
@@ -246,13 +248,17 @@ local function onCellEnter(data)
     local cellState = getCellState(data.cellID, data.player.id)
     clearCellState(cellState)
 
+    local bounty = types.Player.getCrimeLevel(world.players[cellState.playerID])
+    cellState.startingBounty = bounty
+
     -- When we enter a cell, we need to persist ownership data
     -- for all items. We have to do this because ownership data
     -- is lost when the item is placed in the player's inventory.
 
     trackOwnedItems(data.cellID, data.player.id)
 
-    -- settings.debugPrint("onCellEnter() done. new cell state: " .. aux_util.deepToString(getCellState(data.cellID, data.player.id),3))
+    settings.debugPrint("onCellEnter() done. new cell state: " ..
+                            aux_util.deepToString(getCellState(data.cellID, data.player.id), 3))
 end
 
 local function npcIDsToInstances(cellID, npcIDMap)
@@ -340,6 +346,23 @@ local function increaseBounty(player, amount)
     types.Player.setCrimeLevel(player, currentCrime + delta)
 end
 
+local function revertBounty(player)
+    if settings.revertBounties() ~= true then
+        return
+    end
+    local cellState = getCellState(player.cell.id, player.id)
+    local startingBounty = cellState.startingBounty
+    local currentBounty = types.Player.getCrimeLevel(player)
+
+    if currentBounty < startingBounty then
+        settings.debugPrint("bounty decreased, won't do anything")
+        return
+    end
+
+    settings.debugPrint("reverting penalties because there were no witnesses")
+    types.Player.setCrimeLevel(player, startingBounty)
+end
+
 local function handleTheftSeenByGuard(player, value)
     settings.debugPrint("handleTheftSeenByGuard(player, " .. value .. ")")
     increaseBounty(player, value)
@@ -420,11 +443,18 @@ local function onCellExit(data)
         settings.debugPrint("spotted by guards")
     end
 
+    local witnessesExist = false
     local npcRecordToInstance = {}
     for _, instance in pairs(spottedByActorInstance) do
-        -- this is missing people
+        -- this is missing people?
+        witnessesExist = true
         npcRecordToInstance[instance.recordId] = instance
         settings.debugPrint("npcRecordToInstance[" .. instance.recordId .. "] = " .. aux_util.deepToString(instance))
+    end
+
+    -- we have to revert bounties between exiting a cell and entering a cell.
+    if witnessesExist then
+        revertBounty(data.player)
     end
 
     local totalTheftValue = 0

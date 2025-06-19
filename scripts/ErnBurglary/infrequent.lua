@@ -22,7 +22,7 @@ FunctionCollection.__index=FunctionCollection
 function FunctionCollection:new()
     local new = {}
     setmetatable(new,FunctionCollection)
-    return acnt
+    return new
 end
 
 function FunctionCollection:addCallback(id, minDelta, callback)
