@@ -17,6 +17,9 @@ If witnesses are dead before you leave the area, they won't report the theft.
 ## Red-handed Theft
 The punishment for red-handed theft is reduced to a token 1 gp in order to avoid double-jeopardy. You'll be penalized when you leave.
 
+## Re-implementation of No Witness No Bounty
+You can optionally enable behavior that mimics what you see in *No Witness No Bounty*. If there are no witnesses by the time you leave the area, all bounties will reset to what they were when you entered. I had to re-implement this because getting them to work together would be harder.
+
 ## Indicators
 - While you're spotted in the area, a 5pt Drain Sneak effect is applied. This is removed as soon as you're no longer spotted.
 - When you enter sneak mode, you'll get an alert if you were previously spotted.
@@ -29,7 +32,7 @@ You can optionally turn off all the alerts except the last one.
 ## How it Works
 If you're near an NPC and they say something, the mod checks if you are sneaking. If you are sneaking, the mod reproduces the same vanilla game logic for sneak detection. If you fail that check, then the NPC is marked as having spotted you.
 
-Every item you pick up is also tracked, unless you picked it up during a dialogue or barter screen. (This might work now for Pause Control; I haven't tested it.)
+Every item you pick up is also tracked, unless you picked it up during a dialogue or barter screen.
 
 When you leave the cell, the items you picked up are matched with their owners, punishment is determined, and your Spotted flag is cleared.
 
@@ -45,7 +48,7 @@ When you leave the cell, the items you picked up are matched with their owners, 
 
 ### No
 - Regionally Known Criminals
-
+- No Witness No Bounty
 
 ![a thief with a big bag, created with AI](title_image.jpg)
 
