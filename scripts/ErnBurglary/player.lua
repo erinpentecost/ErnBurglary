@@ -130,7 +130,8 @@ local function sneakCheck(actor)
     local distance = (self.position - actor.position):length()
 
     -- always pass the check if sufficiently far away.
-    if distance > 200 then
+    if distance > 400 then
+        settings.debugPrint("too far away: "..actor.recordId)
         return true
     end
 
@@ -296,6 +297,11 @@ local function onUpdate(dt)
     -- this is not called when the game is paused.
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
+        
+        -- run all checks since we don't want to lose info
+        infrequentMap:callAll()
+
+        -- now process cell change
 
         core.sendGlobalEvent(settings.MOD_NAME .. "onCellChange", {
             player = self,
@@ -313,8 +319,6 @@ local function onUpdate(dt)
         noWitnessesMessageReceived = false
         trackInventory()
 
-        -- run all checks since we don't want to lose info
-        infrequentMap:callAll()
         return
     end
 

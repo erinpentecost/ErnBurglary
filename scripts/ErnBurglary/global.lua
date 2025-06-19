@@ -245,11 +245,16 @@ local function onCellEnter(data)
     settings.debugPrint("onCellEnter(" .. aux_util.deepToString(data) .. ")")
 
     -- clean up new cell
+    -- wow this cell state pattern is gross
     local cellState = getCellState(data.cellID, data.player.id)
     clearCellState(cellState)
 
-    local bounty = types.Player.getCrimeLevel(world.players[cellState.playerID])
+    -- save bounty
+    local cellState = getCellState(data.cellID, data.player.id)
+    local bounty = types.Player.getCrimeLevel(data.player)
+    settings.debugPrint("read bounty: "..tostring(bounty))
     cellState.startingBounty = bounty
+    saveCellState(cellState)
 
     -- When we enter a cell, we need to persist ownership data
     -- for all items. We have to do this because ownership data
@@ -346,20 +351,20 @@ local function increaseBounty(player, amount)
     types.Player.setCrimeLevel(player, currentCrime + delta)
 end
 
-local function revertBounty(player)
+local function revertBounty(player, cellState)
     if settings.revertBounties() ~= true then
         return
     end
-    local cellState = getCellState(player.cell.id, player.id)
+
     local startingBounty = cellState.startingBounty
     local currentBounty = types.Player.getCrimeLevel(player)
 
-    if currentBounty < startingBounty then
-        settings.debugPrint("bounty decreased, won't do anything")
+    if currentBounty <= startingBounty then
+        settings.debugPrint("bounty didn't increase, won't do anything")
         return
     end
 
-    settings.debugPrint("reverting penalties because there were no witnesses")
+    print("Reverting bounty from "..currentBounty.." to "..startingBounty..".")
     types.Player.setCrimeLevel(player, startingBounty)
 end
 
@@ -453,8 +458,8 @@ local function onCellExit(data)
     end
 
     -- we have to revert bounties between exiting a cell and entering a cell.
-    if witnessesExist then
-        revertBounty(data.player)
+    if witnessesExist ~= true then
+        revertBounty(data.player, cellState)
     end
 
     local totalTheftValue = 0
@@ -465,7 +470,7 @@ local function onCellExit(data)
     local factionOwnerTheftValue = {}
     local guardTheftValue = 0
 
-    settings.debugPrint("checking " .. #cellState.newItems .. " new items for theft...")
+    settings.debugPrint("checking new items for theft...")
     -- build up value of all stolen goods
     for newItemID, newItem in pairs(cellState.newItems) do
         if newItem == nil then
