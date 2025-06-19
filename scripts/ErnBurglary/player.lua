@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local interfaces = require("openmw.interfaces")
 local settings = require("scripts.ErnBurglary.settings")
-local say = require("scripts.ErnBurglary.say")
+local infrequent = require("scripts.ErnBurglary.infrequent")
 local types = require("openmw.types")
 local nearby = require("openmw.nearby")
 local core = require("openmw.core")
@@ -130,7 +130,8 @@ local function sneakCheck(actor)
     local distance = (self.position - actor.position):length()
 
     -- always pass the check if sufficiently far away.
-    if distance > 200 then
+    if distance > 400 then
+        settings.debugPrint("too far away: "..actor.recordId)
         return true
     end
 
@@ -185,23 +186,7 @@ local function showNoWitnessesMessage(data)
     end
 end
 
-local infrequentMap = {}
-local function addInfrequentUpdateCallback(id, minDelta, callback)
-    infrequentMap[id] = {
-        sum = math.random(0, minDelta),
-        threshold = minDelta,
-        callback = callback
-    }
-end
-local function infrequentUpdate(dt)
-    for k, v in pairs(infrequentMap) do
-        infrequentMap[k].sum = v.sum + dt
-        if infrequentMap[k].sum > v.threshold then
-            infrequentMap[k].sum = infrequentMap[k].sum - v.threshold
-            v.callback(v.threshold)
-        end
-    end
-end
+local infrequentMap = infrequent.FunctionCollection:new()
 
 local function allClear(dt)
     noWitnessesMessageReceivedCooldownTimer = noWitnessesMessageReceivedCooldownTimer - dt
@@ -220,7 +205,7 @@ local function allClear(dt)
 end
 
 local function isTalking(actor)
-    return (core.sound.isSayActive(actor)) and (say.idle(actor) ~= true)
+    return (core.sound.isSayActive(actor))
 end
 
 local function detectionCheck(dt)
@@ -256,7 +241,7 @@ local function detectionCheck(dt)
     end
 end
 
-addInfrequentUpdateCallback("detection", 0.11, detectionCheck)
+infrequentMap:addCallback("detection", 0.11, detectionCheck)
 
 local function inventoryChangeCheck(dt)
     local newItemsList = {}
@@ -287,7 +272,7 @@ local function inventoryChangeCheck(dt)
     end
 end
 
-addInfrequentUpdateCallback("inventory", 0.1, inventoryChangeCheck)
+infrequentMap:addCallback("inventory", 0.1, inventoryChangeCheck)
 
 local function updateSpottedSpell()
     if spotted then
@@ -306,12 +291,17 @@ local function updateSpottedSpell()
     end
 end
 
-addInfrequentUpdateCallback("spottedSpell", 0.8, updateSpottedSpell)
+infrequentMap:addCallback("spottedSpell", 0.8, updateSpottedSpell)
 
 local function onUpdate(dt)
     -- this is not called when the game is paused.
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
+        
+        -- run all checks since we don't want to lose info
+        infrequentMap:callAll()
+
+        -- now process cell change
 
         core.sendGlobalEvent(settings.MOD_NAME .. "onCellChange", {
             player = self,
@@ -329,12 +319,10 @@ local function onUpdate(dt)
         noWitnessesMessageReceived = false
         trackInventory()
 
-        -- don't run other checks this frame.
-        -- fewer frame drops this way.
         return
     end
 
-    infrequentUpdate(dt)
+    infrequentMap:onUpdate(dt)
 end
 
 local function UiModeChanged(data)
