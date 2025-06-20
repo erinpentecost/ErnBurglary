@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local settings = require("scripts.ErnBurglary.settings")
 local common = require("scripts.ErnBurglary.common")
+local infrequent = require("scripts.ErnBurglary.infrequent")
 local world = require('openmw.world')
 local types = require("openmw.types")
 local core = require("openmw.core")
@@ -252,7 +253,7 @@ local function onCellEnter(data)
     -- save bounty
     local cellState = getCellState(data.cellID, data.player.id)
     local bounty = types.Player.getCrimeLevel(data.player)
-    settings.debugPrint("read bounty: "..tostring(bounty))
+    settings.debugPrint("read bounty: " .. tostring(bounty))
     cellState.startingBounty = bounty
     saveCellState(cellState)
 
@@ -266,7 +267,10 @@ local function onCellEnter(data)
                             aux_util.deepToString(getCellState(data.cellID, data.player.id), 3))
 end
 
-local function npcIDsToInstances(cellID, npcIDMap)
+
+
+local function npcIDsToInstances(cellState)
+    local cellID = cellState.cellID
     local cell = world.getCellById(cellID)
     if cell == nil then
         error("bad cell " .. tostring(cellID))
@@ -274,7 +278,7 @@ local function npcIDsToInstances(cellID, npcIDMap)
 
     local out = {}
     for _, npc in pairs(cell:getAll(types.NPC)) do
-        if npcIDMap[npc.id] == true then
+        if cellState.spottedByActorId[npc.id] == true then
             -- settings.debugPrint("found NPC instance " .. npc.id .. ": " .. aux_util.deepToString(npc))
             out[npc.id] = npc
         end
@@ -342,13 +346,12 @@ end
 
 local function increaseBounty(player, amount)
     local currentCrime = types.Player.getCrimeLevel(player)
-    local delta = amount * settings.bountyScale()
-    if delta < 0 then
+    if amount < 0 then
         error("increaseBounty(player," .. amount .. ") would reduce bounty")
         return
     end
-    print("Increased bounty by " .. delta)
-    types.Player.setCrimeLevel(player, currentCrime + delta)
+    print("Increased bounty by " .. amount)
+    types.Player.setCrimeLevel(player, currentCrime + amount)
 end
 
 local function revertBounty(player, cellState)
@@ -364,16 +367,19 @@ local function revertBounty(player, cellState)
         return
     end
 
-    print("Reverting bounty from "..currentBounty.." to "..startingBounty..".")
+    print("Reverting bounty from " .. currentBounty .. " to " .. startingBounty .. ".")
     types.Player.setCrimeLevel(player, startingBounty)
 end
 
+-- returns bounty to apply
 local function handleTheftSeenByGuard(player, value)
     settings.debugPrint("handleTheftSeenByGuard(player, " .. value .. ")")
-    increaseBounty(player, value)
-    print("Theft seen by guard increased bounty by " .. value .. ".")
+    local bounty = value * settings.bountyScale()
+    print("Theft seen by guard increased bounty by " .. bounty .. ".")
+    return bounty
 end
 
+-- returns bounty to apply
 local function handleTheftFromNPC(player, npc, value)
     settings.debugPrint("handleTheftFromNPC(player, " .. npc.id .. ", " .. value .. ")")
     -- npc is an instance.
@@ -382,16 +388,14 @@ local function handleTheftFromNPC(player, npc, value)
     local dispoPenalty = math.min(startDisposition, value)
     types.NPC.modifyBaseDisposition(npc, player, -1 * dispoPenalty)
 
-    local bountyPenalty = value - dispoPenalty
-
-    -- we have leftover penalty.
-    -- for now, just increase crime level
-    increaseBounty(player, bountyPenalty)
+    local bounty = (value - dispoPenalty) * settings.bountyScale()
 
     print("Theft from " .. npc.recordId .. " dropped disposition by " .. dispoPenalty .. " from " .. startDisposition ..
-              ".")
+              ", and increased bounty by " .. bounty .. ".")
+    return bounty
 end
 
+-- returns bounty to apply
 local function handleTheftFromFaction(player, faction, value)
     settings.debugPrint("handleTheftFromFaction(player, " .. faction .. ", " .. value .. ")")
 
@@ -407,12 +411,10 @@ local function handleTheftFromFaction(player, faction, value)
     local reputationPenalty = math.min(startReputation, value)
     types.NPC.modifyFactionReputation(player, faction, -1 * reputationPenalty)
 
-    local bountyPenalty = value - reputationPenalty
-
-    increaseBounty(player, bountyPenalty)
+    local bounty = (value - reputationPenalty) * settings.bountyScale()
 
     local expelled = false
-    if bountyPenalty > 0 then
+    if bounty > 0 then
         for _, playerFaction in ipairs(types.NPC.getFactions(player)) do
             if playerFaction == faction then
                 types.NPC.expel(player, playerFaction)
@@ -426,21 +428,23 @@ local function handleTheftFromFaction(player, faction, value)
 
     print("Theft from " .. faction .. " dropped reputation by " .. reputationPenalty .. " from " .. startReputation ..
               ". Expelled: " .. tostring(expelled))
+
+    return bounty
 end
 
 -- params:
 -- player
 -- cellID
-local function onCellExit(data)
-    settings.debugPrint("onCellExit(" .. aux_util.deepToString(data) .. ")")
+local function resolvePendingTheft(data)
+    settings.debugPrint("resolvePendingTheft() start")
     -- This is where the magic happens, when we resolve which items have
     -- been stolen, and from whom.
     local cellState = getCellState(data.cellID, data.player.id)
 
-    settings.debugPrint("onCellExit() cell state: " .. aux_util.deepToString(cellState, 3))
+    settings.debugPrint("resolvePendingTheft() cell state: " .. aux_util.deepToString(cellState, 3))
 
     -- list of living actors that spotted the player.
-    local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(data.cellID, cellState.spottedByActorId))
+    local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(cellState))
     local spottedByFactionID = factionsOfNPCs(spottedByActorInstance)
     -- if guards spotted you, they will always report it.
     local spottedByGuards = guardsExist(spottedByActorInstance)
@@ -448,18 +452,11 @@ local function onCellExit(data)
         settings.debugPrint("spotted by guards")
     end
 
-    local witnessesExist = false
     local npcRecordToInstance = {}
     for _, instance in pairs(spottedByActorInstance) do
         -- this is missing people?
-        witnessesExist = true
         npcRecordToInstance[instance.recordId] = instance
         settings.debugPrint("npcRecordToInstance[" .. instance.recordId .. "] = " .. aux_util.deepToString(instance))
-    end
-
-    -- we have to revert bounties between exiting a cell and entering a cell.
-    if witnessesExist ~= true then
-        revertBounty(data.player, cellState)
     end
 
     local totalTheftValue = 0
@@ -539,26 +536,63 @@ local function onCellExit(data)
         end
     end
 
+    local totalBounty = 0
+
     -- punish for npc theft
     for npcID, value in pairs(npcOwnerTheftValue) do
-        handleTheftFromNPC(data.player, spottedByActorInstance[npcID], value)
+        totalBounty = totalBounty + handleTheftFromNPC(data.player, spottedByActorInstance[npcID], value)
     end
     -- punish for faction theft
     for factionID, value in pairs(factionOwnerTheftValue) do
-        handleTheftFromFaction(data.player, factionID, value)
+        totalBounty = totalBounty + handleTheftFromFaction(data.player, factionID, value)
     end
 
     if guardTheftValue > 0 then
-        handleTheftSeenByGuard(data.player, guardTheftValue)
+        totalBounty = totalBounty + handleTheftSeenByGuard(data.player, guardTheftValue)
     end
 
-    if totalTheftValue > 0 then
+    if totalBounty > 0 then
+        -- this spawns a popup message each time.
+        -- that's why we only apply it once.
+        increaseBounty(data.player, totalBounty)
+    elseif totalTheftValue > 0 then
+        -- tell player they were caught, even when bounty did not increase.
         data.player:sendEvent(settings.MOD_NAME .. "showWantedMessage", {
             value = totalTheftValue
         })
     end
 
+    -- clear stolen items tracking since we resolved them
+    cellState.newItems = {}
+    saveCellState(cellState)
+end
+
+local function onCellExit(data)
+    settings.debugPrint("onCellExit(" .. aux_util.deepToString(data) .. ")")
+
+    -- This is where the magic happens, when we resolve which items have
+    -- been stolen, and from whom.
+    local cellState = getCellState(data.cellID, data.player.id)
+
+    -- list of living actors that spotted the player.
+    local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(cellState))
+
+    local witnessesExist = false
+    for _, instance in pairs(spottedByActorInstance) do
+        witnessesExist = true
+        break
+    end
+
+    -- we have to revert bounties between exiting a cell and entering a cell.
+    if witnessesExist ~= true then
+        revertBounty(data.player, cellState)
+    end
+
+    -- apply theft
+    resolvePendingTheft(data)
+
     -- clean up old cell
+    local cellState = getCellState(data.cellID, data.player.id)
     clearCellState(cellState)
 end
 
@@ -595,26 +629,49 @@ local function onNewItems(data)
     saveCellState(cellState)
 end
 
+local infrequentMap = infrequent.FunctionCollection:new()
+
 -- This just fires off the "no more witnesses" message.
-local updateDelay = 0
-local function onUpdate(dt)
-    updateDelay = updateDelay + dt
-    if updateDelay > 1.5 then
-        updateDelay = updateDelay - 1.5
-        -- loop through all players and check if they have witnesses
-        for _, player in ipairs(world.players) do
-            local cellState = getCellState(player.cell.id, player.id)
-            local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(player.cell.id, cellState.spottedByActorId))
-            local anyPresent = false
-            for _, _ in pairs(spottedByActorInstance) do
-                anyPresent = true
-                break
-            end
-            if anyPresent == false then
-                player:sendEvent(settings.MOD_NAME .. "showNoWitnessesMessage", {})
-            end
+local function noWitnessCheck(dt)
+    -- loop through all players and check if they have witnesses
+    for _, player in ipairs(world.players) do
+        local cellState = getCellState(player.cell.id, player.id)
+        local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(cellState))
+        local anyPresent = false
+        for _, _ in pairs(spottedByActorInstance) do
+            anyPresent = true
+            break
+        end
+        if anyPresent == false then
+            player:sendEvent(settings.MOD_NAME .. "showNoWitnessesMessage", {})
         end
     end
+end
+
+-- monitor for bounty increases. if it goes up, resolve pending thefts.
+local function redHandedCheck(dt)
+    -- loop through all players and check if they have witnesses
+    for _, player in ipairs(world.players) do
+        local cellState = getCellState(player.cell.id, player.id)
+        local bounty = types.Player.getCrimeLevel(player)
+        if bounty > cellState.startingBounty then
+            -- this is not so good because it will also apply when we
+            -- increase bounty on cell change. should be idempotent,
+            -- so will leave for now.
+            -- this essentially puts you into a "wanted" mode
+            -- where ALL new pickups will be processed immediately until you leave the cell...
+            -- TODO: fix. this is so spaghetti
+            settings.debugPrint("bounty increased from "..cellState.startingBounty.." to "..bounty..". Checking for stolen items...")
+            resolvePendingTheft({player = player,
+            cellID = player.cell.id})
+        end
+    end
+end
+
+infrequentMap:addCallback("redHandedCheck", 0.08, redHandedCheck)
+
+local function onUpdate(dt)
+    infrequentMap:onUpdate(dt)
 end
 
 return {

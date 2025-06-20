@@ -37,7 +37,7 @@ function FunctionCollection:onUpdate(dt)
     for k, v in pairs(self) do
         self[k].sum = v.sum + dt
         if self[k].sum > v.threshold then
-            self[k].sum = self[k].sum - v.threshold
+            self[k].sum = self[k].sum % v.threshold
             v.callback(v.threshold)
         end
     end
