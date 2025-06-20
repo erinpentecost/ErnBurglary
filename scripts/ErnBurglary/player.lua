@@ -66,6 +66,11 @@ local function trackInventory()
 end
 trackInventory()
 
+local function onPendingTheftProcessed()
+    -- this happens when theft is processed by global.
+    trackInventory()
+end
+
 local function showWantedMessage(data)
     settings.debugPrint("showWantedMessage")
     ui.showMessage(localization("showWantedMessage", {
@@ -325,17 +330,30 @@ local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
 
+local bounty = 0
+
 local function UiModeChanged(data)
     if data.newMode == "Dialogue" then
         settings.debugPrint("in dialogue")
         -- this is for a pause control patch
         inDialogue = true
+        bounty = types.Player.getCrimeLevel(self)
     elseif data.oldMode == "Dialogue" then
         settings.debugPrint("was in dialogue")
         inDialogue = false
         -- ensure we skip the NEXT item check.
         -- the item check is not done while paused in vanilla.
         forgiveNewItems = true
+
+        -- detect bounty payoffs
+        local newBounty = types.Player.getCrimeLevel(self)
+        if (newBounty == 0) and (bounty ~= 0) then
+            -- we paid off our bounty.
+            core.sendGlobalEvent(settings.MOD_NAME .. "onPaidBounty", {
+                player = self,
+                previousBounty = bounty,
+            })
+        end
     end
 end
 
@@ -353,6 +371,7 @@ return {
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
         [settings.MOD_NAME .. "showNoWitnessesMessage"] = showNoWitnessesMessage,
         [settings.MOD_NAME .. "setItemsAllowed"] = setItemsAllowed,
+        [settings.MOD_NAME .. "onPendingTheftProcessed"] = onPendingTheftProcessed,
         UiModeChanged = UiModeChanged
     },
     engineHandlers = {

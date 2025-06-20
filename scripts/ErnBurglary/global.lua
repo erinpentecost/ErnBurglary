@@ -71,7 +71,10 @@ local function newCellState(cellID, playerID)
         -- item id -> item instance
         newItems = {},
         -- startingBounty is the player's bounty when they enter a cell.
-        startingBounty = 0
+        startingBounty = 0,
+        -- tracks bount at the time of the last red-handed instant resolve
+        -- this is done to prevent multiple checks...
+        bountyAtLastRedHandedApply = 0
     }
 end
 
@@ -255,6 +258,7 @@ local function onCellEnter(data)
     local bounty = types.Player.getCrimeLevel(data.player)
     settings.debugPrint("read bounty: " .. tostring(bounty))
     cellState.startingBounty = bounty
+    cellState.bountyAtLastRedHandedApply = bounty
     saveCellState(cellState)
 
     -- When we enter a cell, we need to persist ownership data
@@ -565,6 +569,8 @@ local function resolvePendingTheft(data)
     -- clear stolen items tracking since we resolved them
     cellState.newItems = {}
     saveCellState(cellState)
+    -- also clear the deduper on the player
+    data.player:sendEvent(settings.MOD_NAME .. "onPendingTheftProcessed", {})
 end
 
 local function onCellExit(data)
@@ -654,16 +660,16 @@ local function redHandedCheck(dt)
     for _, player in ipairs(world.players) do
         local cellState = getCellState(player.cell.id, player.id)
         local bounty = types.Player.getCrimeLevel(player)
-        if bounty > cellState.startingBounty then
-            -- this is not so good because it will also apply when we
-            -- increase bounty on cell change. should be idempotent,
-            -- so will leave for now.
-            -- this essentially puts you into a "wanted" mode
-            -- where ALL new pickups will be processed immediately until you leave the cell...
-            -- TODO: fix. this is so spaghetti
+        -- did bounty go up? if so, we got caught.
+        if bounty > cellState.bountyAtLastRedHandedApply then
             settings.debugPrint("bounty increased from "..cellState.startingBounty.." to "..bounty..". Checking for stolen items...")
-            resolvePendingTheft({player = player,
-            cellID = player.cell.id})
+            -- resolvePendingTheft might change bounty
+            resolvePendingTheft({player = player, cellID = player.cell.id})
+
+            -- save bounty
+            local cellState = getCellState(player.cell.id, player.id)
+            cellState.bountyAtLastRedHandedApply = types.Player.getCrimeLevel(player)
+            saveCellState(cellState)
         end
     end
 end
@@ -674,11 +680,20 @@ local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
 
+local function onPaidBounty(data)
+    settings.debugPrint("detected bounty payoff")
+    local cellState = getCellState(data.player.cell.id, data.player.id)
+    cellState.bountyAtLastRedHandedApply = 0
+    cellState.startingBounty = 0
+    saveCellState(cellState)
+end
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "onSpotted"] = onSpotted,
         [settings.MOD_NAME .. "onCellChange"] = onCellChange,
-        [settings.MOD_NAME .. "onNewItem"] = onNewItems
+        [settings.MOD_NAME .. "onNewItem"] = onNewItems,
+        [settings.MOD_NAME .. "onPaidBounty"] = onPaidBounty
     },
     engineHandlers = {
         onSave = saveState,
