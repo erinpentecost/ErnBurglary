@@ -267,11 +267,9 @@ local function onCellEnter(data)
 
     trackOwnedItems(data.cellID, data.player.id)
 
-    --settings.debugPrint("onCellEnter() done. new cell state: " ..
+    -- settings.debugPrint("onCellEnter() done. new cell state: " ..
     --                        aux_util.deepToString(getCellState(data.cellID, data.player.id), 3))
 end
-
-
 
 local function npcIDsToInstances(cellState)
     local cellID = cellState.cellID
@@ -442,14 +440,11 @@ end
 local function resolvePendingTheft(data)
     settings.debugPrint("resolvePendingTheft() start")
 
-    -- clear cache on player
-    --data.player:sendEvent(settings.MOD_NAME .. "onPendingTheftProcessed", {})
-
     -- This is where the magic happens, when we resolve which items have
     -- been stolen, and from whom.
     local cellState = getCellState(data.cellID, data.player.id)
 
-    --settings.debugPrint("resolvePendingTheft() cell state: " .. aux_util.deepToString(cellState, 3))
+    -- settings.debugPrint("resolvePendingTheft() cell state: " .. aux_util.deepToString(cellState, 3))
 
     -- list of living actors that spotted the player.
     local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(cellState))
@@ -458,6 +453,10 @@ local function resolvePendingTheft(data)
     local spottedByGuards = guardsExist(spottedByActorInstance)
     if spottedByGuards then
         settings.debugPrint("spotted by guards")
+    end
+    if data.redHanded then
+        settings.debugPrint("caught red-handed, so assume at least guards got us.")
+        spottedByGuards = true
     end
 
     local npcRecordToInstance = {}
@@ -573,7 +572,7 @@ local function resolvePendingTheft(data)
     -- clear stolen items tracking since we resolved them
     cellState.newItems = {}
     saveCellState(cellState)
-    
+
 end
 
 local function onCellExit(data)
@@ -657,30 +656,32 @@ local function noWitnessCheck(dt)
     end
 end
 
--- monitor for bounty increases. if it goes up, resolve pending thefts.
-local function redHandedCheck(dt)
-    -- loop through all players and check if they have witnesses
-    for _, player in ipairs(world.players) do
-        local cellState = getCellState(player.cell.id, player.id)
-        local bounty = types.Player.getCrimeLevel(player)
-        -- did bounty go up? if so, we got caught.
-        if bounty > cellState.bountyAtLastRedHandedApply then
-            settings.debugPrint("bounty increased from "..cellState.startingBounty.." to "..bounty..". Checking for stolen items...")
-            -- resolvePendingTheft might change bounty
-            resolvePendingTheft({player = player, cellID = player.cell.id})
-
-            -- save bounty
-            local cellState = getCellState(player.cell.id, player.id)
-            cellState.bountyAtLastRedHandedApply = types.Player.getCrimeLevel(player)
-            saveCellState(cellState)
-        end
-    end
-end
-
-infrequentMap:addCallback("redHandedCheck", 0.08, redHandedCheck)
-
 local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
+end
+
+-- monitor for bounty increases. if it goes up, resolve pending thefts.
+local function onBountyIncreased(data)
+    -- loop through all players and check if they have witnesses
+
+    local cellState = getCellState(data.player.cell.id, data.player.id)
+    local bounty = types.Player.getCrimeLevel(data.player)
+    -- did bounty go up? if so, we got caught.
+    if bounty > cellState.bountyAtLastRedHandedApply then
+        settings.debugPrint("bounty increased from " .. cellState.startingBounty .. " to " .. bounty ..
+                                ". Checking for stolen items...")
+        -- resolvePendingTheft might change bounty
+        resolvePendingTheft({
+            player = data.player,
+            cellID = data.player.cell.id,
+            redHanded = true,
+        })
+
+        -- save bounty
+        local cellState = getCellState(data.player.cell.id, data.player.id)
+        cellState.bountyAtLastRedHandedApply = types.Player.getCrimeLevel(data.player)
+        saveCellState(cellState)
+    end
 end
 
 local function onPaidBounty(data)
@@ -696,7 +697,8 @@ return {
         [settings.MOD_NAME .. "onSpotted"] = onSpotted,
         [settings.MOD_NAME .. "onCellChange"] = onCellChange,
         [settings.MOD_NAME .. "onNewItem"] = onNewItems,
-        [settings.MOD_NAME .. "onPaidBounty"] = onPaidBounty
+        [settings.MOD_NAME .. "onPaidBounty"] = onPaidBounty,
+        [settings.MOD_NAME .. "onBountyIncreased"] = onBountyIncreased
     },
     engineHandlers = {
         onSave = saveState,

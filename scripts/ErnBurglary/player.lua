@@ -67,12 +67,6 @@ local function trackInventory()
 end
 trackInventory()
 
---local function onPendingTheftProcessed()
-    -- this happens when theft is processed by global.
-    -- data contains a map of item IDs that global saw.
---    trackInventory()
---end
-
 local function showWantedMessage(data)
     settings.debugPrint("showWantedMessage")
     ui.showMessage(localization("showWantedMessage", {
@@ -335,9 +329,15 @@ local function onUpdate(dt)
     local newBounty = types.Player.getCrimeLevel(self)
     if bounty < newBounty then
         -- we got caught!
-        -- run all checks since we don't want to lose info
+        -- run all checks since we don't want to lose info.
+        -- hopefully, this executes before the red-handed global check.
         infrequentMap:callAll()
         bounty = newBounty
+
+        -- notify global that we got caught.
+        core.sendGlobalEvent(settings.MOD_NAME .. "onBountyIncreased", {
+            player = self,
+        })
         return
     end
     
@@ -385,7 +385,6 @@ return {
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
         [settings.MOD_NAME .. "showNoWitnessesMessage"] = showNoWitnessesMessage,
         [settings.MOD_NAME .. "setItemsAllowed"] = setItemsAllowed,
-        --[settings.MOD_NAME .. "onPendingTheftProcessed"] = onPendingTheftProcessed,
         UiModeChanged = UiModeChanged
     },
     engineHandlers = {
