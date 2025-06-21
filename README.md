@@ -3,7 +3,7 @@ OpenMW mod that overhauls theft. No longer will NPCs forget that you were in the
 
 
 ## THIS IS AN ALPHA RELEASE
-There are still some bugs. Looting from bandits will also count as burglary (unless they are dead). Stacks of items aren't handled well. These will be fixed later.
+There are still some bugs. Looting from bandits will also count as burglary (unless they are dead). These will be fixed later.
 
 ## Witnesses and Punishment
 If an NPC greets you, they will remember that you are in the area. If their stuff disappeared before you left, you'll be caught *after-the-fact*. This punishment is less severe than *red-handed* theft: the value of the stolen goods will be subtracted from the owner's disposition until it hits 0. Any leftover value will be converted into bounty.
@@ -66,7 +66,7 @@ content=ErnBurglary.omwscripts
 
 ## Integrations
 
-See the `interface.lua` file if you'd like to hook into spotted and theft events.
+See the `interface.lua` file if you'd like to hook into spotted and theft events, or if you want to ensure compatibility with unpause mods. 
 
 
 ## Contributing

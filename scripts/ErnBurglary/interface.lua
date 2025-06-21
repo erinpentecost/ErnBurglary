@@ -67,7 +67,8 @@ local onStolenCallbacks = {}
 -- - itemInstance
 -- - itemRecordID
 -- - owner
--- - cellID (cell the theft occurred in)
+-- - count (number in the stack that was stolen. at least 1.)
+-- - cellID (cell the theft occurred in. might not be the player's current cell.)
 -- - caught (boolean indicating if the player was caught stealing it)
 local function onStolenCallback(callback)
     table.insert(onStolenCallbacks, callback)
