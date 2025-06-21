@@ -72,7 +72,7 @@ local function newCellState(cellID, playerID)
         -- item id -> item instance
         newItems = {},
         -- startingBounty is the player's bounty when they enter a cell.
-        startingBounty = 0,
+        startingBounty = 0
     }
 end
 
@@ -171,6 +171,8 @@ local function inferAreaOwner(cellID, playerID)
     end
     return bestMatch
 end
+
+local skipNextBountyIncrease = false
 
 -- Save ownership data for containers when they are activated.
 -- Adds elements to state.itemIDtoOwnership.
@@ -351,7 +353,9 @@ local function increaseBounty(player, amount)
         return
     end
     print("Increased bounty by " .. amount)
+    skipNextBountyIncrease = true
     types.Player.setCrimeLevel(player, currentCrime + amount)
+    skipNextBountyIncrease = true
 end
 
 local function revertBounty(player, cellState)
@@ -400,8 +404,8 @@ local function handleTheftFromFaction(player, faction, value)
     settings.debugPrint("handleTheftFromFaction(player, " .. faction .. ", " .. value .. ")")
 
     if settings.lenientFactions() then
-        increaseBounty(player, value)
-        print("Theft from " .. faction .. ".")
+        print("Theft from " .. faction .. " (lenient).")
+        return value * settings.bountyScale()
     end
 
     local startReputation = types.NPC.getFactionReputation(player, faction)
@@ -454,6 +458,8 @@ local function resolvePendingTheft(data)
     end
     if data.redHanded then
         settings.debugPrint("caught red-handed, so assume at least guards got us.")
+        -- this is a funny situation because the game detected the theft,
+        -- but we might have not.
         spottedByGuards = true
     end
 
@@ -520,8 +526,8 @@ local function resolvePendingTheft(data)
                         itemInstance = newItem,
                         itemRecord = itemRecord,
                         owner = owner,
-                        cellID=data.cellID,
-                        caught = true,
+                        cellID = data.cellID,
+                        caught = true
                     })
                 else
                     table.insert(stolenCallBacks, {
@@ -529,7 +535,7 @@ local function resolvePendingTheft(data)
                         itemInstance = newItem,
                         itemRecord = itemRecord,
                         owner = owner,
-                        cellID=data.cellID,
+                        cellID = data.cellID,
                         caught = false
                     })
                 end
@@ -546,7 +552,7 @@ local function resolvePendingTheft(data)
                     itemInstance = newItem,
                     itemRecord = itemRecord,
                     owner = owner,
-                    cellID=data.cellID,
+                    cellID = data.cellID,
                     caught = true
                 })
             else
@@ -555,7 +561,7 @@ local function resolvePendingTheft(data)
                     itemInstance = newItem,
                     itemRecord = itemRecord,
                     owner = owner,
-                    cellID=data.cellID,
+                    cellID = data.cellID,
                     caught = false
                 })
             end
@@ -580,7 +586,7 @@ local function resolvePendingTheft(data)
                     itemInstance = newItem,
                     itemRecord = itemRecord,
                     owner = owner,
-                    cellID=data.cellID,
+                    cellID = data.cellID,
                     caught = true
                 })
             else
@@ -589,7 +595,7 @@ local function resolvePendingTheft(data)
                     itemInstance = newItem,
                     itemRecord = itemRecord,
                     owner = owner,
-                    cellID=data.cellID,
+                    cellID = data.cellID,
                     caught = false
                 })
             end
@@ -720,6 +726,14 @@ end
 
 -- monitor for bounty increases. if it goes up, resolve pending thefts.
 local function onBountyIncreased(data)
+
+    -- this var exists so we don't process cold-case thefts
+    if skipNextBountyIncrease then
+        settings.debugPrint("ignoring bounty increase")
+        skipNextBountyIncrease = false
+        return
+    end
+
     -- loop through all players and check if they have witnesses
 
     local cellState = getCellState(data.player.cell.id, data.player.id)
@@ -728,7 +742,28 @@ local function onBountyIncreased(data)
     local newBounty = data.newBounty
 
     -- did bounty go up? if so, we got caught.
-    settings.debugPrint("bounty increased from " .. oldBounty .. " to " .. newBounty .. ". Checking for stolen items...")
+    -- grab the nearest NPC and add them to the spotted list.
+    -- we do this to reconcile the game detecting a theft/crime where we might
+    -- not have.
+    local closestActor = nil
+    local closestDistance = 100000000
+    for _, actor in ipairs(data.player.cell:getAll(types.NPC)) do
+        local distance = (data.player.position - actor.position):length2()
+        if (distance < closestDistance) then
+            closestDistance = distance
+            closestActor = actor
+        end
+    end
+    if closestActor ~= nil then
+        settings.debugPrint("bounty increased from " .. oldBounty .. " to " .. newBounty .. ". Assuming " ..
+                                closestActor.recordId .. " spotted us.")
+        onSpotted({
+            player = data.player,
+            cellID = data.player.cell.id,
+            npc = closestActor
+        })
+    end
+
     -- resolvePendingTheft might change bounty
     resolvePendingTheft({
         player = data.player,

@@ -17,6 +17,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local settings = require("scripts.ErnBurglary.settings")
 
+if require("openmw.core").API_REVISION < 62 then
+    error("OpenMW 0.49 or newer is required!")
+    return
+end
+
 local onSpottedCallbacks = {}
 local spottedPlayerStatus = {}
 

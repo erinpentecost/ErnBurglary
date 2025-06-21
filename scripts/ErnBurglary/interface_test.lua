@@ -19,13 +19,13 @@ local interfaces = require('openmw.interfaces')
 local aux_util = require('openmw_aux.util')
 
 local function onSpottedChangeCallback(data)
-    print(settings.MOD_NAME .. ".onSpottedChangeCallback(" .. aux_util.deepToString(data, 2) .. ")")
+    settings.debugPrint("onSpottedChangeCallback(" .. aux_util.deepToString(data, 2) .. ")")
 end
 
 interfaces.ErnBurglary.onSpottedChangeCallback(onSpottedChangeCallback)
 
 local function onStolenCallback(data)
-    print(settings.MOD_NAME .. ".onStolenCallback(" .. aux_util.deepToString(data, 4) .. ")")
+    settings.debugPrint("onStolenCallback(" .. aux_util.deepToString(data, 4) .. ")")
 end
 
 interfaces.ErnBurglary.onStolenCallback(onStolenCallback)
