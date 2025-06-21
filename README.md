@@ -1,10 +1,6 @@
 # ErnBurglary
 OpenMW mod that overhauls theft. No longer will NPCs forget that you were in their house when all their gems were stolen.
 
-
-## THIS IS AN ALPHA RELEASE
-There are still some bugs. Looting from bandits will also count as burglary (unless they are dead). These will be fixed later.
-
 ## Witnesses and Punishment
 If an NPC greets you, they will remember that you are in the area. If their stuff disappeared before you left, you'll be caught *after-the-fact*. This punishment is less severe than *red-handed* theft: the value of the stolen goods will be subtracted from the owner's disposition until it hits 0. Any leftover value will be converted into bounty.
 
