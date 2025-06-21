@@ -71,10 +71,7 @@ local function newCellState(cellID, playerID)
         -- item id -> item instance
         newItems = {},
         -- startingBounty is the player's bounty when they enter a cell.
-        startingBounty = 0,
-        -- tracks bount at the time of the last red-handed instant resolve
-        -- this is done to prevent multiple checks...
-        bountyAtLastRedHandedApply = 0
+        startingBounty = 0
     }
 end
 
@@ -258,7 +255,6 @@ local function onCellEnter(data)
     local bounty = types.Player.getCrimeLevel(data.player)
     settings.debugPrint("read bounty: " .. tostring(bounty))
     cellState.startingBounty = bounty
-    cellState.bountyAtLastRedHandedApply = bounty
     saveCellState(cellState)
 
     -- When we enter a cell, we need to persist ownership data
@@ -656,6 +652,8 @@ local function noWitnessCheck(dt)
     end
 end
 
+infrequentMap:addCallback("noWitnessCheck", 0.5, noWitnessCheck)
+
 local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
@@ -665,29 +663,25 @@ local function onBountyIncreased(data)
     -- loop through all players and check if they have witnesses
 
     local cellState = getCellState(data.player.cell.id, data.player.id)
-    local bounty = types.Player.getCrimeLevel(data.player)
-    -- did bounty go up? if so, we got caught.
-    if bounty > cellState.bountyAtLastRedHandedApply then
-        settings.debugPrint("bounty increased from " .. cellState.startingBounty .. " to " .. bounty ..
-                                ". Checking for stolen items...")
-        -- resolvePendingTheft might change bounty
-        resolvePendingTheft({
-            player = data.player,
-            cellID = data.player.cell.id,
-            redHanded = true,
-        })
 
-        -- save bounty
-        local cellState = getCellState(data.player.cell.id, data.player.id)
-        cellState.bountyAtLastRedHandedApply = types.Player.getCrimeLevel(data.player)
-        saveCellState(cellState)
-    end
+    local oldBounty = data.oldBounty
+    local newBounty = data.newBounty
+
+    -- did bounty go up? if so, we got caught.
+    settings.debugPrint("bounty increased from " .. oldBounty .. " to " .. newBounty ..
+                            ". Checking for stolen items...")
+    -- resolvePendingTheft might change bounty
+    resolvePendingTheft({
+        player = data.player,
+        cellID = data.player.cell.id,
+        redHanded = true
+    })
+
 end
 
 local function onPaidBounty(data)
     settings.debugPrint("detected bounty payoff")
     local cellState = getCellState(data.player.cell.id, data.player.id)
-    cellState.bountyAtLastRedHandedApply = 0
     cellState.startingBounty = 0
     saveCellState(cellState)
 end

@@ -328,16 +328,20 @@ local function onUpdate(dt)
 
     local newBounty = types.Player.getCrimeLevel(self)
     if bounty < newBounty then
+        settings.debugPrint("detected bounty increase")
         -- we got caught!
         -- run all checks since we don't want to lose info.
         -- hopefully, this executes before the red-handed global check.
         infrequentMap:callAll()
-        bounty = newBounty
-
+        
         -- notify global that we got caught.
         core.sendGlobalEvent(settings.MOD_NAME .. "onBountyIncreased", {
             player = self,
+            oldBounty=bounty,
+            newBounty=newBounty,
         })
+
+        bounty = newBounty
         return
     end
     
