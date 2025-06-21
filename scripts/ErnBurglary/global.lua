@@ -484,7 +484,6 @@ local function resolvePendingTheft(data)
     -- build up value of all stolen goods
     for newItemID, newItemBag in pairs(cellState.newItems) do
         local newItem = newItemBag.item
-        -- TODO: multiply by count
         if newItem == nil then
             error("newItem is nil for id " .. tostring(newItemID))
         end
@@ -497,13 +496,14 @@ local function resolvePendingTheft(data)
         if (itemRecord == nil) then
             error("failed to get valid record for item: " .. aux_util.deepToString(newItem, 2))
         end
+
         local value = itemRecord.value
         if value == nil then
-            error("value for " ..newItemBag.count.. " ".. itemRecord.name .. " is nil")
+            error("value for " .. itemRecord.name .. " is nil")
         end
-
         if newItemBag.count > 1 then
-            settings.debugPrint("multiplying value of " .. itemRecord.name .. " ("..value..") by count " ..newItemBag.count.. ".")
+            settings.debugPrint("multiplying value of " .. itemRecord.name .. " (" .. value .. ") by count " ..
+                                    newItemBag.count .. ".")
             value = value * newItemBag.count
         end
 
@@ -522,12 +522,13 @@ local function resolvePendingTheft(data)
 
         if (owner == nil) then
             -- the item is not owned.
-            settings.debugPrint("assessing " ..newItemBag.count.. " new item: " .. itemRecord.name .. "(" .. newItem.id ..
-                                    "): not owned by anyone")
+            settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
+                                    newItem.id .. "): not owned by anyone")
         elseif (owner.recordId ~= nil) then
-            settings.debugPrint("assessing " ..newItemBag.count.. " new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
-                                    tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
-                                    tostring(owner.factionRank) .. "), gp value: " .. value)
+            settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
+                                    newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
+                                    tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
+                                    value)
             -- the item is owned by an individual.
             -- if that individual is alive, they will report.
             -- instance can be nil if the actor is dead.
@@ -543,7 +544,7 @@ local function resolvePendingTheft(data)
                         player = data.player,
                         itemInstance = newItem,
                         itemRecord = itemRecord,
-                        count=newItemBag.count,
+                        count = newItemBag.count,
                         owner = owner,
                         cellID = data.cellID,
                         caught = true
@@ -553,14 +554,14 @@ local function resolvePendingTheft(data)
                         player = data.player,
                         itemInstance = newItem,
                         itemRecord = itemRecord,
-                        count=newItemBag.count,
+                        count = newItemBag.count,
                         owner = owner,
                         cellID = data.cellID,
                         caught = false
                     })
                 end
             elseif (spottedByActorInstance[instance.id]) then
-                settings.debugPrint("you were spotted taking " ..newItemBag.count.. " " .. itemRecord.name)
+                settings.debugPrint("you were spotted taking " .. newItemBag.count .. " " .. itemRecord.name)
                 totalTheftValue = totalTheftValue + value
                 if npcOwnerTheftValue[instance.id] == nil then
                     npcOwnerTheftValue[instance.id] = 0
@@ -571,7 +572,7 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
-                    count=newItemBag.count,
+                    count = newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = true
@@ -581,16 +582,17 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
-                    count=newItemBag.count,
+                    count = newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = false
                 })
             end
         elseif (owner.factionId ~= nil) and (atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
-            settings.debugPrint("assessing " ..newItemBag.count.. " new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
-                                    tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
-                                    tostring(owner.factionRank) .. "), gp value: " .. value)
+            settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
+                                    newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
+                                    tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
+                                    value)
 
             -- the item is owned by a faction.
             -- if any members of the faction spotted the player,
@@ -607,7 +609,7 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
-                    count=newItemBag.count,
+                    count = newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = true
@@ -617,7 +619,7 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
-                    count=newItemBag.count,
+                    count = newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = false
@@ -717,13 +719,17 @@ local function onNewItems(data)
         if (itemBag == nil) then
             error("item is nil")
         end
-        
+
         if cellState.newItems[itemBag.item.id] ~= nil then
             -- check for stack change
             local oldCount = cellState.newItems[itemBag.item.id].count
-            local newCount = oldCount+itemBag.count
-            cellState.newItems[itemBag.item.id] = {item=itemBag.item, count=newCount}
-            settings.debugPrint("increased stack of new item "..itemBag.item.recordId.." from "..oldCount.." to "..newCount)
+            local newCount = oldCount + itemBag.count
+            cellState.newItems[itemBag.item.id] = {
+                item = itemBag.item,
+                count = newCount
+            }
+            settings.debugPrint("increased stack of new item " .. itemBag.item.recordId .. " from " .. oldCount ..
+                                    " to " .. newCount)
         else
             -- totally new item
             cellState.newItems[itemBag.item.id] = itemBag
@@ -783,7 +789,9 @@ local function onBountyIncreased(data)
     local closestDistance = 100000000
     for _, actor in ipairs(data.player.cell:getAll(types.NPC)) do
         local distance = (data.player.position - actor.position):length2()
-        if (distance < closestDistance) then
+        if types.Actor.isDead(actor) or types.Actor.isDeathFinished(actor) then
+            settings.debugPrint(actor.recordId .. " is dead")
+        elseif (distance < closestDistance) then
             closestDistance = distance
             closestActor = actor
         end
