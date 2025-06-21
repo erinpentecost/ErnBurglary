@@ -15,7 +15,7 @@ Guards look out for everyone's items, not just their own.
 If witnesses are dead before you leave the area, they won't report the theft.
 
 ## Red-handed Theft
-The punishment for red-handed theft is reduced to a token 1 gp in order to avoid double-jeopardy. You'll be penalized when you leave.
+The punishment for red-handed theft is reduced to a token 1 gp in order to avoid double-jeopardy. Getting caught red-handed will immediately resolve any pending thefts you did earlier.
 
 ## Re-implementation of No Witness No Bounty
 You can optionally enable behavior that mimics what you see in *No Witness No Bounty*. If there are no witnesses by the time you leave the area, all bounties will reset to what they were when you entered. I had to re-implement this because getting them to work together would be harder.
@@ -63,6 +63,11 @@ data="/wherevermymodsare/mods/ErnBurglary-main"
 content=ErnBurglary.omwaddon
 content=ErnBurglary.omwscripts
 ```
+
+## Integrations
+
+See the `interface.lua` file if you'd like to hook into spotted and theft events.
+
 
 ## Contributing
 
