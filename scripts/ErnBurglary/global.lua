@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local settings = require("scripts.ErnBurglary.settings")
 local common = require("scripts.ErnBurglary.common")
 local infrequent = require("scripts.ErnBurglary.infrequent")
+local interfaces = require('openmw.interfaces')
 local world = require('openmw.world')
 local types = require("openmw.types")
 local core = require("openmw.core")
@@ -71,7 +72,7 @@ local function newCellState(cellID, playerID)
         -- item id -> item instance
         newItems = {},
         -- startingBounty is the player's bounty when they enter a cell.
-        startingBounty = 0
+        startingBounty = 0,
     }
 end
 
@@ -237,6 +238,7 @@ local function onSpotted(data)
     local cellState = getCellState(data.cellID, data.player.id)
     cellState.spottedByActorId[data.npc.id] = true
     saveCellState(cellState)
+    interfaces.ErnBurglary.__onSpotted(data.player)
 end
 
 -- params:
@@ -470,6 +472,8 @@ local function resolvePendingTheft(data)
     local factionOwnerTheftValue = {}
     local guardTheftValue = 0
 
+    local stolenCallBacks = {}
+
     settings.debugPrint("checking new items for theft...")
     -- build up value of all stolen goods
     for newItemID, newItem in pairs(cellState.newItems) do
@@ -500,7 +504,6 @@ local function resolvePendingTheft(data)
             settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
                                     tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
                                     tostring(owner.factionRank) .. "), gp value: " .. value)
-
             -- the item is owned by an individual.
             -- if that individual is alive, they will report.
             -- instance can be nil if the actor is dead.
@@ -511,6 +514,24 @@ local function resolvePendingTheft(data)
                     guardTheftValue = guardTheftValue + value
                     settings.debugPrint("theft spotted by guards")
                     totalTheftValue = totalTheftValue + value
+
+                    table.insert(stolenCallBacks, {
+                        player = data.player,
+                        itemInstance = newItem,
+                        itemRecord = itemRecord,
+                        owner = owner,
+                        cellID=data.cellID,
+                        caught = true,
+                    })
+                else
+                    table.insert(stolenCallBacks, {
+                        player = data.player,
+                        itemInstance = newItem,
+                        itemRecord = itemRecord,
+                        owner = owner,
+                        cellID=data.cellID,
+                        caught = false
+                    })
                 end
             elseif (spottedByActorInstance[instance.id]) then
                 settings.debugPrint("you were spotted taking " .. itemRecord.name)
@@ -519,6 +540,24 @@ local function resolvePendingTheft(data)
                     npcOwnerTheftValue[instance.id] = 0
                 end
                 npcOwnerTheftValue[instance.id] = npcOwnerTheftValue[instance.id] + value
+
+                table.insert(stolenCallBacks, {
+                    player = data.player,
+                    itemInstance = newItem,
+                    itemRecord = itemRecord,
+                    owner = owner,
+                    cellID=data.cellID,
+                    caught = true
+                })
+            else
+                table.insert(stolenCallBacks, {
+                    player = data.player,
+                    itemInstance = newItem,
+                    itemRecord = itemRecord,
+                    owner = owner,
+                    cellID=data.cellID,
+                    caught = false
+                })
             end
         elseif (owner.factionId ~= nil) and (atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
             settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
@@ -535,6 +574,24 @@ local function resolvePendingTheft(data)
                     factionOwnerTheftValue[owner.factionId] = 0
                 end
                 factionOwnerTheftValue[owner.factionId] = factionOwnerTheftValue[owner.factionId] + value
+
+                table.insert(stolenCallBacks, {
+                    player = data.player,
+                    itemInstance = newItem,
+                    itemRecord = itemRecord,
+                    owner = owner,
+                    cellID=data.cellID,
+                    caught = true
+                })
+            else
+                table.insert(stolenCallBacks, {
+                    player = data.player,
+                    itemInstance = newItem,
+                    itemRecord = itemRecord,
+                    owner = owner,
+                    cellID=data.cellID,
+                    caught = false
+                })
             end
         end
     end
@@ -569,6 +626,8 @@ local function resolvePendingTheft(data)
     cellState.newItems = {}
     saveCellState(cellState)
 
+    -- invoke callbacks
+    interfaces.ErnBurglary.__onStolen(stolenCallBacks)
 end
 
 local function onCellExit(data)
@@ -648,6 +707,7 @@ local function noWitnessCheck(dt)
         end
         if anyPresent == false then
             player:sendEvent(settings.MOD_NAME .. "showNoWitnessesMessage", {})
+            interfaces.ErnBurglary.__onNoWitnesses(player)
         end
     end
 end
@@ -668,8 +728,7 @@ local function onBountyIncreased(data)
     local newBounty = data.newBounty
 
     -- did bounty go up? if so, we got caught.
-    settings.debugPrint("bounty increased from " .. oldBounty .. " to " .. newBounty ..
-                            ". Checking for stolen items...")
+    settings.debugPrint("bounty increased from " .. oldBounty .. " to " .. newBounty .. ". Checking for stolen items...")
     -- resolvePendingTheft might change bounty
     resolvePendingTheft({
         player = data.player,

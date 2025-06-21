@@ -1,4 +1,4 @@
-GLOBAL:scripts/ErnBurglary/global.lua
-GLOBAL:scripts/ErnBurglary/interface.lua
 PLAYER:scripts/ErnBurglary/player.lua
-
+GLOBAL:scripts/ErnBurglary/interface.lua
+GLOBAL:scripts/ErnBurglary/global.lua
+GLOBAL:scripts/ErnBurglary/interface_test.lua

@@ -17,6 +17,63 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local settings = require("scripts.ErnBurglary.settings")
 
+local onSpottedCallbacks = {}
+local spottedPlayerStatus = {}
+
+-- onSpottedCallback adds a callback to be invoked whenever the player's Spotted status changes.
+-- This could be used to power a trespassing mod or whatever else.
+-- The params passed into the callback is a table with these fields:
+-- - player
+-- - spotted (boolean)
+local function onSpottedChangeCallback(callback)
+    table.insert(onSpottedCallbacks, callback)
+end
+
+local function __onSpotted(player)
+    for _, callback in ipairs(onSpottedCallbacks) do
+        if (spottedPlayerStatus[player.id] ~= true) then
+            spottedPlayerStatus[player.id] = true
+            callback({
+                player=player,
+                spotted=true,
+            })
+        end
+    end
+end
+
+local function __onNoWitnesses(player)
+    for _, callback in ipairs(onSpottedCallbacks) do
+        if (spottedPlayerStatus[player.id] ~= false) then
+            spottedPlayerStatus[player.id] = false
+            callback({
+                player=player,
+                spotted=false,
+            })
+        end
+    end
+end
+
+local onStolenCallbacks = {}
+
+-- onStolenCallback adds a callback to be invoked whenever the player steals an item.
+-- This could be used to power a spawn-detectives mod or whatever.
+-- The param is a list of tables. Each table has these fields:
+-- - player
+-- - itemInstance
+-- - itemRecordID
+-- - owner
+-- - cellID (cell the theft occurred in)
+-- - caught (boolean indicating if the player was caught stealing it)
+local function onStolenCallback(callback)
+    table.insert(onStolenCallbacks, callback)
+end
+
+local function __onStolen(data)
+    for _, callback in ipairs(onStolenCallbacks) do
+        callback(data)
+    end
+end
+
 -- setItemsAllowed will set the InDialogue flag.
 -- While this flag is true, any new items gained will not be counted as stolen.
 -- This is not a permanent change. ErnBurglary will reset this flag if
@@ -31,5 +88,10 @@ return {
     interface = {
         version = 1,
         setItemsAllowed = setItemsAllowed,
+        onSpottedChangeCallback = onSpottedChangeCallback,
+        onStolenCallback = onStolenCallback,
+        __onSpotted = __onSpotted,
+        __onNoWitnesses = __onNoWitnesses,
+        __onStolen = __onStolen,
     }
 }
