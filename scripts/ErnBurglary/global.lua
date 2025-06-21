@@ -105,8 +105,24 @@ local function clearCellState(cellState)
         newCellState(cellState.cellID, cellState.playerID)
 end
 
+local function isBandit(player, actor)
+    -- assume if they want to fight us on sight that they are a bandit.
+    -- bandits won't report theft, so don't assign ownership to them.
+    -- 30 is normal for friendly NPCs.
+    -- chargen boat guard has 70!
+    -- bandits have 90 and 0 disposition
+    local fightStat = types.Actor.stats.ai.fight(actor).base
+    local startDisposition = types.NPC.getBaseDisposition(actor, player)
+    if fightStat >= 90 and startDisposition <= 40 then
+        settings.debugPrint(actor.recordId .. " might be a bandit")
+        return true
+    end
+    return false
+end
+
 -- trackOwnedItems resets state.itemIDtoOwnership.
-local function trackOwnedItems(cellID, playerID)
+local function trackOwnedItems(cellID, player)
+    local playerID = player.id
     settings.debugPrint("trackOwnedItems(" .. tostring(cellID) .. ") start")
 
     local cell = world.getCellById(cellID)
@@ -124,7 +140,7 @@ local function trackOwnedItems(cellID, playerID)
     for _, item in ipairs(cell:getAll()) do
         if types.Item.objectIsInstance(item) then
             cellState.itemIDtoOwnership[item.id] = common.serializeOwner(item.owner)
-        elseif types.NPC.objectIsInstance(item) then
+        elseif types.NPC.objectIsInstance(item) and (isBandit(player, item) ~= true) then
             local backupOwner = {
                 recordId = item.recordId
             }
@@ -265,7 +281,7 @@ local function onCellEnter(data)
     -- for all items. We have to do this because ownership data
     -- is lost when the item is placed in the player's inventory.
 
-    trackOwnedItems(data.cellID, data.player.id)
+    trackOwnedItems(data.cellID, data.player)
 
     -- settings.debugPrint("onCellEnter() done. new cell state: " ..
     --                        aux_util.deepToString(getCellState(data.cellID, data.player.id), 3))
