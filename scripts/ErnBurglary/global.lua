@@ -267,8 +267,8 @@ local function onCellEnter(data)
 
     trackOwnedItems(data.cellID, data.player.id)
 
-    settings.debugPrint("onCellEnter() done. new cell state: " ..
-                            aux_util.deepToString(getCellState(data.cellID, data.player.id), 3))
+    --settings.debugPrint("onCellEnter() done. new cell state: " ..
+    --                        aux_util.deepToString(getCellState(data.cellID, data.player.id), 3))
 end
 
 
@@ -441,11 +441,15 @@ end
 -- cellID
 local function resolvePendingTheft(data)
     settings.debugPrint("resolvePendingTheft() start")
+
+    -- clear cache on player
+    --data.player:sendEvent(settings.MOD_NAME .. "onPendingTheftProcessed", {})
+
     -- This is where the magic happens, when we resolve which items have
     -- been stolen, and from whom.
     local cellState = getCellState(data.cellID, data.player.id)
 
-    settings.debugPrint("resolvePendingTheft() cell state: " .. aux_util.deepToString(cellState, 3))
+    --settings.debugPrint("resolvePendingTheft() cell state: " .. aux_util.deepToString(cellState, 3))
 
     -- list of living actors that spotted the player.
     local spottedByActorInstance = filterDeadNPCs(npcIDsToInstances(cellState))
@@ -560,7 +564,7 @@ local function resolvePendingTheft(data)
         -- that's why we only apply it once.
         increaseBounty(data.player, totalBounty)
     elseif totalTheftValue > 0 then
-        -- tell player they were caught, even when bounty did not increase.
+        -- tell player they were caught (when bounty did not increase).
         data.player:sendEvent(settings.MOD_NAME .. "showWantedMessage", {
             value = totalTheftValue
         })
@@ -569,8 +573,7 @@ local function resolvePendingTheft(data)
     -- clear stolen items tracking since we resolved them
     cellState.newItems = {}
     saveCellState(cellState)
-    -- also clear the deduper on the player
-    data.player:sendEvent(settings.MOD_NAME .. "onPendingTheftProcessed", {})
+    
 end
 
 local function onCellExit(data)

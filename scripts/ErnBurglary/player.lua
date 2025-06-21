@@ -61,15 +61,17 @@ local itemsInInventory = {}
 local function trackInventory()
     itemsInInventory = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
+
         itemsInInventory[item.id] = item
     end
 end
 trackInventory()
 
-local function onPendingTheftProcessed()
+--local function onPendingTheftProcessed()
     -- this happens when theft is processed by global.
-    trackInventory()
-end
+    -- data contains a map of item IDs that global saw.
+--    trackInventory()
+--end
 
 local function showWantedMessage(data)
     settings.debugPrint("showWantedMessage")
@@ -298,6 +300,9 @@ end
 
 infrequentMap:addCallback("spottedSpell", 0.8, updateSpottedSpell)
 
+
+local bounty = 0
+
 local function onUpdate(dt)
     -- this is not called when the game is paused.
     if lastCellID ~= self.cell.id then
@@ -327,10 +332,18 @@ local function onUpdate(dt)
         return
     end
 
+    local newBounty = types.Player.getCrimeLevel(self)
+    if bounty < newBounty then
+        -- we got caught!
+        -- run all checks since we don't want to lose info
+        infrequentMap:callAll()
+        bounty = newBounty
+        return
+    end
+    
+    -- run periodically
     infrequentMap:onUpdate(dt)
 end
-
-local bounty = 0
 
 local function UiModeChanged(data)
     if data.newMode == "Dialogue" then
@@ -348,6 +361,7 @@ local function UiModeChanged(data)
         -- detect bounty payoffs
         local newBounty = types.Player.getCrimeLevel(self)
         if (newBounty == 0) and (bounty ~= 0) then
+            bounty = 0
             -- we paid off our bounty.
             core.sendGlobalEvent(settings.MOD_NAME .. "onPaidBounty", {
                 player = self,
@@ -371,7 +385,7 @@ return {
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
         [settings.MOD_NAME .. "showNoWitnessesMessage"] = showNoWitnessesMessage,
         [settings.MOD_NAME .. "setItemsAllowed"] = setItemsAllowed,
-        [settings.MOD_NAME .. "onPendingTheftProcessed"] = onPendingTheftProcessed,
+        --[settings.MOD_NAME .. "onPendingTheftProcessed"] = onPendingTheftProcessed,
         UiModeChanged = UiModeChanged
     },
     engineHandlers = {
