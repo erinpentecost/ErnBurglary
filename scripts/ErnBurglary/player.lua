@@ -53,13 +53,14 @@ local forgiveNewItems = false
 
 -- itemsInInventory is used to track changes in the
 -- player's inventory.
--- it's a map of item instance id -> instance.
+-- it's a map of item instance id -> {item=instance,count=count}.
+-- count is tracked separately because we need to detect changes.
 local itemsInInventory = {}
 local function trackInventory()
     itemsInInventory = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
 
-        itemsInInventory[item.id] = item
+        itemsInInventory[item.id] = {item=item,count=item.count}
     end
 end
 trackInventory()
@@ -239,11 +240,22 @@ infrequentMap:addCallback("detection", 0.11, detectionCheck)
 local function inventoryChangeCheck(dt)
     local newItemsList = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
-        if itemsInInventory[item.id] == nil then
-            table.insert(newItemsList, item)
-            settings.debugPrint("found new item: " .. aux_util.deepToString(item, 2))
+        local itemBag = itemsInInventory[item.id]
+        if itemBag == nil then
+            local newBag = {item=item,count=(item.count)}
+            -- brand new item.
+            table.insert(newItemsList, newBag)
+            settings.debugPrint("found "..tostring(newBag.count).." new item: " .. aux_util.deepToString(item, 2))
             -- don't re-add the item
-            itemsInInventory[item.id] = item
+            itemsInInventory[item.id] = newBag
+        elseif item.count > itemBag.count then
+            -- the count of the item in the player inventory went up.
+            local newBag = {item=item,count=(item.count - itemBag.count)}
+            table.insert(newItemsList, newBag)
+            settings.debugPrint("found "..tostring(newBag.count).." new items in stack: " .. aux_util.deepToString(item, 2))
+            -- update count in stack
+            local updatedBag = {item=item,count=(item.count)}
+            itemsInInventory[item.id] = updatedBag
         end
     end
     if forgiveNewItems then

@@ -69,7 +69,7 @@ local function newCellState(cellID, playerID)
         -- spottedByActorId is a map of actor id -> true
         spottedByActorId = {},
         -- newItems is a map of new items the player picked up while in the cell.
-        -- item id -> item instance
+        -- item id -> {item=item,count=(item.count)}
         newItems = {},
         -- startingBounty is the player's bounty when they enter a cell.
         startingBounty = 0
@@ -482,7 +482,9 @@ local function resolvePendingTheft(data)
 
     settings.debugPrint("checking new items for theft...")
     -- build up value of all stolen goods
-    for newItemID, newItem in pairs(cellState.newItems) do
+    for newItemID, newItemBag in pairs(cellState.newItems) do
+        local newItem = newItemBag.item
+        -- TODO: multiply by count
         if newItem == nil then
             error("newItem is nil for id " .. tostring(newItemID))
         end
@@ -497,17 +499,33 @@ local function resolvePendingTheft(data)
         end
         local value = itemRecord.value
         if value == nil then
-            error("value for " .. itemRecord.name .. " is nil")
+            error("value for " ..newItemBag.count.. " ".. itemRecord.name .. " is nil")
         end
 
+        if newItemBag.count > 1 then
+            settings.debugPrint("multiplying value of " .. itemRecord.name .. " ("..value..") by count " ..newItemBag.count.. ".")
+            value = value * newItemBag.count
+        end
+
+        -- TODO: This can fail sometimes with stacks. If a player already has an
+        -- item, and they steal more of it that is owned, the instance the player
+        -- has has its count increased by the difference and the new item is destroyed.
+        -- We no longer have the ID of the new item, so our cached lookup fails.
+        -- Could do a workaround where if the owner is not found by id, consult a
+        -- cache that is indexed on item.recordId. That would result in false positives,
+        -- which is not a fun experience. For now, this bug is acceptable.
+        --
+        -- The reverse is also possible. If a player steals an item, and then buys
+        -- more of it so that it stacks, they would be charged with theft for each
+        -- subsequent one. This is mitigated though by the new item forgiveness check.
         local owner = cellState.itemIDtoOwnership[newItem.id]
 
         if (owner == nil) then
             -- the item is not owned.
-            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id ..
+            settings.debugPrint("assessing " ..newItemBag.count.. " new item: " .. itemRecord.name .. "(" .. newItem.id ..
                                     "): not owned by anyone")
         elseif (owner.recordId ~= nil) then
-            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
+            settings.debugPrint("assessing " ..newItemBag.count.. " new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
                                     tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
                                     tostring(owner.factionRank) .. "), gp value: " .. value)
             -- the item is owned by an individual.
@@ -525,6 +543,7 @@ local function resolvePendingTheft(data)
                         player = data.player,
                         itemInstance = newItem,
                         itemRecord = itemRecord,
+                        count=newItemBag.count,
                         owner = owner,
                         cellID = data.cellID,
                         caught = true
@@ -534,13 +553,14 @@ local function resolvePendingTheft(data)
                         player = data.player,
                         itemInstance = newItem,
                         itemRecord = itemRecord,
+                        count=newItemBag.count,
                         owner = owner,
                         cellID = data.cellID,
                         caught = false
                     })
                 end
             elseif (spottedByActorInstance[instance.id]) then
-                settings.debugPrint("you were spotted taking " .. itemRecord.name)
+                settings.debugPrint("you were spotted taking " ..newItemBag.count.. " " .. itemRecord.name)
                 totalTheftValue = totalTheftValue + value
                 if npcOwnerTheftValue[instance.id] == nil then
                     npcOwnerTheftValue[instance.id] = 0
@@ -551,6 +571,7 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
+                    count=newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = true
@@ -560,13 +581,14 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
+                    count=newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = false
                 })
             end
         elseif (owner.factionId ~= nil) and (atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
-            settings.debugPrint("assessing new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
+            settings.debugPrint("assessing " ..newItemBag.count.. " new item: " .. itemRecord.name .. "(" .. newItem.id .. ") owned by " ..
                                     tostring(owner.recordId) .. "/" .. tostring(owner.factionId) .. "(" ..
                                     tostring(owner.factionRank) .. "), gp value: " .. value)
 
@@ -585,6 +607,7 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
+                    count=newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = true
@@ -594,6 +617,7 @@ local function resolvePendingTheft(data)
                     player = data.player,
                     itemInstance = newItem,
                     itemRecord = itemRecord,
+                    count=newItemBag.count,
                     owner = owner,
                     cellID = data.cellID,
                     caught = false
@@ -689,11 +713,21 @@ local function onNewItems(data)
     -- this is not called when the game is paused.
     settings.debugPrint("onNewItems(" .. aux_util.deepToString(data) .. ")")
     local cellState = getCellState(data.cellID, data.player.id)
-    for _, item in ipairs(data.itemsList) do
-        if (item == nil) then
+    for _, itemBag in ipairs(data.itemsList) do
+        if (itemBag == nil) then
             error("item is nil")
         end
-        cellState.newItems[item.id] = item
+        
+        if cellState.newItems[itemBag.item.id] ~= nil then
+            -- check for stack change
+            local oldCount = cellState.newItems[itemBag.item.id].count
+            local newCount = oldCount+itemBag.count
+            cellState.newItems[itemBag.item.id] = {item=itemBag.item, count=newCount}
+            settings.debugPrint("increased stack of new item "..itemBag.item.recordId.." from "..oldCount.." to "..newCount)
+        else
+            -- totally new item
+            cellState.newItems[itemBag.item.id] = itemBag
+        end
     end
     saveCellState(cellState)
 end
