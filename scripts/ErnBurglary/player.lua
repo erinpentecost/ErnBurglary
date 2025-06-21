@@ -45,9 +45,6 @@ local spotted = false
 local sneaking = false
 local warnCooldownTimer = 0
 
-local noWitnessesMessageReceivedCooldownTimer = 0
-local noWitnessesMessageReceived = false
-
 -- inDialogue is true while talking to an NPC.
 -- this is an attempt to get this working with Pause Control.
 local inDialogue = false
@@ -61,6 +58,7 @@ local itemsInInventory = {}
 local function trackInventory()
     itemsInInventory = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
+
         itemsInInventory[item.id] = item
     end
 end
@@ -83,22 +81,23 @@ end
 
 local function elusiveness(distance)
     -- https://en.uesp.net/wiki/Morrowind:Sneak
-    
+
     local sneakTerm = types.NPC.stats.skills.sneak(self).modified
     local agilityTerm = types.Actor.stats.attributes.agility(self).modified / 5
     local luckTerm = types.Actor.stats.attributes.luck(self).modified / 10
-    local distanceTerm = 0.5 + (distance/500)
+    local distanceTerm = 0.5 + (distance / 500)
     local fatigueStat = types.Actor.stats.dynamic.fatigue(self)
     local fatigueTerm = 0.75 + (0.5 * math.min(1, math.max(0, fatigueStat.current / fatigueStat.base)))
-    
+
     local chameleonEffect = types.Actor.activeEffects(self):getEffect(core.magic.EFFECT_TYPE.Chameleon)
     local chameleon = 0
     if chameleonEffect ~= nil then
         chameleon = chameleonEffect.magnitude
     end
 
-    local elusivenessScore = (sneakTerm+agilityTerm+luckTerm) * distanceTerm * fatigueTerm + chameleon
-    settings.debugPrint("elusiveness: ".. elusivenessScore .. " = ".. "("..sneakTerm.."+"..agilityTerm.."+"..luckTerm..") * "..distanceTerm.." * "..fatigueTerm.." + "..chameleon)
+    local elusivenessScore = (sneakTerm + agilityTerm + luckTerm) * distanceTerm * fatigueTerm + chameleon
+    settings.debugPrint("elusiveness: " .. elusivenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
+                            luckTerm .. ") * " .. distanceTerm .. " * " .. fatigueTerm .. " + " .. chameleon)
     return elusivenessScore
 end
 
@@ -120,8 +119,9 @@ local function awareness(actor)
         blind = blindEffect.magnitude
     end
 
-    local awarenessScore = (sneakTerm+agilityTerm+luckTerm-blind) * fatigueTerm * directionMult
-    settings.debugPrint("awareness: ".. awarenessScore .. " = ".. "("..sneakTerm.."+"..agilityTerm.."+"..luckTerm.."-"..blind..") * "..fatigueTerm.." * "..directionMult)
+    local awarenessScore = (sneakTerm + agilityTerm + luckTerm - blind) * fatigueTerm * directionMult
+    settings.debugPrint("awareness: " .. awarenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
+                            luckTerm .. "-" .. blind .. ") * " .. fatigueTerm .. " * " .. directionMult)
     return awarenessScore
 end
 
@@ -131,7 +131,7 @@ local function sneakCheck(actor)
 
     -- always pass the check if sufficiently far away.
     if distance > 400 then
-        settings.debugPrint("too far away: "..actor.recordId)
+        settings.debugPrint("too far away: " .. actor.recordId)
         return true
     end
 
@@ -149,7 +149,7 @@ local function sneakCheck(actor)
     local sneakChance = math.min(100, math.max(0, elusiveness(distance) - awareness(actor)))
     local roll = math.random(0, 100)
 
-    settings.debugPrint("sneak chance: "..sneakChance..", roll: "..roll)
+    settings.debugPrint("sneak chance: " .. sneakChance .. ", roll: " .. roll)
 
     return sneakChance >= roll
 end
@@ -181,35 +181,28 @@ end
 registerHandlers()
 
 local function showNoWitnessesMessage(data)
-    if spotted then
-        noWitnessesMessageReceived = true
+    if spotted == false then
+        return
+    end
+    spotted = false
+
+    settings.debugPrint("showNoWitnessesMessage")
+    spottedByActorID = {}
+    if settings.quietMode() ~= true then
+        ui.showMessage(localization("showNoWitnessesMessage", {}))
     end
 end
 
 local infrequentMap = infrequent.FunctionCollection:new()
 
-local function allClear(dt)
-    noWitnessesMessageReceivedCooldownTimer = noWitnessesMessageReceivedCooldownTimer - dt
-    if spotted and noWitnessesMessageReceived then
-        settings.debugPrint("showNoWitnessesMessage")
-        noWitnessesMessageReceived = false
-        spotted = false
-        spottedByActorID = {}
-        if noWitnessesMessageReceivedCooldownTimer <= 0 then
-            if settings.quietMode() ~= true then
-                ui.showMessage(localization("showNoWitnessesMessage", {}))
-            end
-            noWitnessesMessageReceivedCooldownTimer = 2
-        end
-    end
-end
-
 local function isTalking(actor)
-    return (core.sound.isSayActive(actor))
+    if types.Actor.isDead(actor) or types.Actor.isDeathFinished(actor) then
+        return false
+    end
+    return core.sound.isSayActive(actor)
 end
 
 local function detectionCheck(dt)
-    allClear(dt)
 
     warnCooldownTimer = warnCooldownTimer - dt
 
@@ -258,7 +251,7 @@ local function inventoryChangeCheck(dt)
         forgiveNewItems = false
         return
     end
-    
+
     if #newItemsList > 0 then
         if inDialogue then
             settings.debugPrint("forgave new items")
@@ -293,11 +286,13 @@ end
 
 infrequentMap:addCallback("spottedSpell", 0.8, updateSpottedSpell)
 
+local bounty = 0
+
 local function onUpdate(dt)
     -- this is not called when the game is paused.
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
-        
+
         -- run all checks since we don't want to lose info
         infrequentMap:callAll()
 
@@ -315,13 +310,31 @@ local function onUpdate(dt)
         spottedByActorID = {}
         spotted = false
         warnCooldownTimer = 0
-        noWitnessesMessageReceivedCooldownTimer = 0
-        noWitnessesMessageReceived = false
         trackInventory()
 
         return
     end
 
+    local newBounty = types.Player.getCrimeLevel(self)
+    if bounty < newBounty then
+        settings.debugPrint("detected bounty increase")
+        -- we got caught!
+        -- run all checks since we don't want to lose info.
+        infrequentMap:callAll()
+
+        -- notify global that we got caught.
+        -- this will immediately check for pending thefts
+        core.sendGlobalEvent(settings.MOD_NAME .. "onBountyIncreased", {
+            player = self,
+            oldBounty = bounty,
+            newBounty = newBounty
+        })
+
+        bounty = newBounty
+        return
+    end
+
+    -- run periodically
     infrequentMap:onUpdate(dt)
 end
 
@@ -330,12 +343,24 @@ local function UiModeChanged(data)
         settings.debugPrint("in dialogue")
         -- this is for a pause control patch
         inDialogue = true
+        bounty = types.Player.getCrimeLevel(self)
     elseif data.oldMode == "Dialogue" then
         settings.debugPrint("was in dialogue")
         inDialogue = false
         -- ensure we skip the NEXT item check.
         -- the item check is not done while paused in vanilla.
         forgiveNewItems = true
+
+        -- detect bounty payoffs
+        local newBounty = types.Player.getCrimeLevel(self)
+        if (newBounty == 0) and (bounty ~= 0) then
+            bounty = 0
+            -- we paid off our bounty.
+            core.sendGlobalEvent(settings.MOD_NAME .. "onPaidBounty", {
+                player = self,
+                previousBounty = bounty
+            })
+        end
     end
 end
 
