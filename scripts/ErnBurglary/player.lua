@@ -331,10 +331,10 @@ local function onUpdate(dt)
         settings.debugPrint("detected bounty increase")
         -- we got caught!
         -- run all checks since we don't want to lose info.
-        -- hopefully, this executes before the red-handed global check.
         infrequentMap:callAll()
         
         -- notify global that we got caught.
+        -- this will immediately check for pending thefts
         core.sendGlobalEvent(settings.MOD_NAME .. "onBountyIncreased", {
             player = self,
             oldBounty=bounty,
