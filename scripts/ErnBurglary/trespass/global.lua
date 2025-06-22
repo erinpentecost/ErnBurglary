@@ -58,6 +58,8 @@ local function hasKey(door, actor)
             persistedState[mapKey] = true
             if settings.keyring() then
                 -- delete the key
+                -- TODO: There is a bug here when a key is used for both doors and chests.
+                -- We don't auto-unlock chests.
                 item:remove()
             end
             -- let them in.
