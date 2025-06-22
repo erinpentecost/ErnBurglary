@@ -29,3 +29,10 @@ local function onStolenCallback(data)
 end
 
 interfaces.ErnBurglary.onStolenCallback(onStolenCallback)
+
+
+local function onCellChangeCallback(data)
+    settings.debugPrint("onCellChangeCallback(" .. aux_util.deepToString(data, 4) .. ")")
+end
+
+interfaces.ErnBurglary.onCellChangeCallback(onCellChangeCallback)

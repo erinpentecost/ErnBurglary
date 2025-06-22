@@ -13,6 +13,9 @@ quietMode_description: "Turn this on to only be alerted when your theft was noti
 bountyScale_name: "Scale Theft Bounty"
 bountyScale_description: "To determine the bounty for theft, multiply the stolen gold value by this number."
 
+trespassFine_name: "Trespass Bounty"
+trespassFine_description: "Penalty for being caught trespassing. Set to 0 to disable trespassing checks."
+
 lenientFactions_name: "Lenient Factions"
 lenientFactions_description: "Faction reputation won't drop and you won't get expelled if you're caught after-the-fact. You'll still accrue a bounty."
 

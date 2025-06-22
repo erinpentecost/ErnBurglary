@@ -80,6 +80,24 @@ local function __onStolen(data)
     end
 end
 
+local onCellChangeCallbacks = {}
+
+-- onCellChangeCallback adds a callback to be invoked whenever the Player
+-- changes their current cell.
+-- The param is a list of tables. Each table has these fields:
+-- - player
+-- - lastCellID
+-- - newCellID
+local function onCellChangeCallback(callback)
+    table.insert(onCellChangeCallbacks, callback)
+end
+
+local function __onCellChange(data)
+    for _, callback in ipairs(onCellChangeCallbacks) do
+        callback(data)
+    end
+end
+
 -- setItemsAllowed will set the InDialogue flag.
 -- While this flag is true, any new items gained will not be counted as stolen.
 -- This is not a permanent change. ErnBurglary will reset this flag if
@@ -96,8 +114,10 @@ return {
         setItemsAllowed = setItemsAllowed,
         onSpottedChangeCallback = onSpottedChangeCallback,
         onStolenCallback = onStolenCallback,
+        onCellChangeCallback = onCellChangeCallback,
         __onSpotted = __onSpotted,
         __onNoWitnesses = __onNoWitnesses,
         __onStolen = __onStolen,
+        __onCellChange = __onCellChange,
     }
 }

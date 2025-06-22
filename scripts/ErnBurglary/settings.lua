@@ -38,6 +38,10 @@ local function bountyScale()
     return settingsStore:get("bountyScale")
 end
 
+local function trespassFine()
+    return settingsStore:get("trespassFine")
+end
+
 local function lenientFactions()
     return settingsStore:get("lenientFactions")
 end
@@ -77,22 +81,33 @@ local function initSettings()
                 max = 100
             }
         }, {
+            key = "trespassFine",
+            name = "trespassFine_name",
+            description = "trespassFine_description",
+            default = 10,
+            renderer = "number",
+            argument = {
+                integer = true,
+                min = 0,
+                max = 1000
+            }
+        }, {
             key = "revertBounties",
             name = "revertBounties_name",
             description = "revertBounties_description",
-            default = false,
+            default = true,
             renderer = "checkbox"
         }, {
             key = "quietMode",
             name = "quietMode_name",
             description = "quietMode_description",
-            default = false,
+            default = true,
             renderer = "checkbox"
         }, {
             key = "lenientFactions",
             name = "lenientFactions_name",
             description = "lenientFactions_description",
-            default = false,
+            default = true,
             renderer = "checkbox"
         }, {
             key = "inferOwnership",
@@ -119,6 +134,7 @@ return {
     revertBounties = revertBounties,
     quietMode = quietMode,
     bountyScale = bountyScale,
+    trespassFine = trespassFine,
     lenientFactions = lenientFactions,
     inferOwnership = inferOwnership,
     debugMode = debugMode,

@@ -21,7 +21,6 @@ local interfaces = require('openmw.interfaces')
 local world = require('openmw.world')
 local types = require("openmw.types")
 local core = require("openmw.core")
-local async = require('openmw.async')
 local aux_util = require('openmw_aux.util')
 local storage = require('openmw.storage')
 
@@ -721,6 +720,8 @@ local function onCellChange(data)
         player = data.player,
         cellID = data.newCellID
     })
+
+    interfaces.ErnBurglary.__onCellChange(data)
 end
 
 -- params:
