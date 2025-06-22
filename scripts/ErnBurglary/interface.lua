@@ -31,7 +31,7 @@ local spottedPlayerStatus = {}
 -- - spotted (boolean)
 local function onSpottedChangeCallback(callback)
     table.insert(onSpottedCallbacks, callback)
-    print("Registered callback #" .. #onSpottedCallbacks .. " for onSpottedChangeCallback().")
+    settings.debugPrint("Registered callback #" .. #onSpottedCallbacks .. " for onSpottedChangeCallback().")
 end
 
 local function __onSpotted(player)
@@ -76,7 +76,7 @@ local onStolenCallbacks = {}
 -- - caught (boolean indicating if the player was caught stealing it)
 local function onStolenCallback(callback)
     table.insert(onStolenCallbacks, callback)
-    print("Registered callback #" .. #onStolenCallbacks .. " for onStolenCallback().")
+    settings.debugPrint("Registered callback #" .. #onStolenCallbacks .. " for onStolenCallback().")
 end
 
 local function __onStolen(data)
@@ -95,7 +95,7 @@ local onCellChangeCallbacks = {}
 -- - newCellID
 local function onCellChangeCallback(callback)
     table.insert(onCellChangeCallbacks, callback)
-    print("Registered callback #" .. #onCellChangeCallbacks .. " for onCellChangeCallbacks().")
+    settings.debugPrint("Registered callback #" .. #onCellChangeCallbacks .. " for onCellChangeCallbacks().")
 end
 
 local function __onCellChange(data)

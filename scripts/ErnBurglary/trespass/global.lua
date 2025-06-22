@@ -56,6 +56,10 @@ local function hasKey(door, actor)
         if item.recordId == keyRecord.id then
             -- memorize ownership of the key.
             persistedState[mapKey] = true
+            if settings.keyring() then
+                -- delete the key
+                item:remove()
+            end
             -- let them in.
             return true
         end
@@ -76,7 +80,7 @@ local function onActivate(object, actor)
             return
         end
         local doorRecord = types.Door.records[object.recordId]
-        if doorRecord.mwscript == nil then
+        if doorRecord.mwscript ~= nil then
             -- don't mess with scripted doors.
             return
         end
@@ -86,13 +90,12 @@ local function onActivate(object, actor)
             return
         end
 
-        if types.Lockable.isLocked(object) and hasKey(object, actor) then
+        if settings.keyring() and types.Lockable.isLocked(object) and hasKey(object, actor) then
             -- unlock the door since we had the key at some point.
             settings.debugPrint("Player " .. actor.id .. " unlocked " .. object.recordId .. " (" .. object.id ..
                                     ") with the keyring.")
             types.Lockable.unlock(object)
             types.Lockable.setTrapSpell(object, nil)
-            -- TODO: play unlock sound?
             actor:sendEvent(settings.MOD_NAME .. "showUnlockMessage", {
                 key = keyRecord.name
             })

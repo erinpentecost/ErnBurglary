@@ -19,12 +19,11 @@ local interfaces = require('openmw.interfaces')
 local types = require("openmw.types")
 local core = require("openmw.core")
 local localization = core.l10n(settings.MOD_NAME)
+local ui = require('openmw.ui')
 
 local function showUnlockMessage(data)
     settings.debugPrint("showUnlockMessage")
-    ui.showMessage(localization("showUnlockMessage", {
-        value = data.value
-    }))
+    ui.showMessage(localization("showUnlockMessage", data))
 end
 
 
