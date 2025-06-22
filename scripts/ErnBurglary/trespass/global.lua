@@ -41,7 +41,7 @@ local function hasKey(door, actor)
     local keyRecord = types.Lockable.getKeyRecord(door)
     if keyRecord == nil then
         -- no key, so never allowed.
-        settings.debugPrint("No key exists for door "..door.id..".")
+        settings.debugPrint("No key exists for door " .. door.id .. ".")
         return false
     end
     -- check if we previously had the key
@@ -75,19 +75,38 @@ local function onActivate(object, actor)
             -- this means we are closing the door.
             return
         end
-        if types.Lockable.isLocked(object) and hasKey(object, actor) then
-            -- unlock the door since we had the key at some point
-            settings.debugPrint("Player "..actor.id.." unlocked "..object.recordId.." ("..object.id..") with the keyring.")
-            types.Lockable.unlock(object)
-            -- TODO: play unlock sound?
+        local doorRecord = types.Door.records[object.recordId]
+        if doorRecord.mwscript == nil then
+            -- don't mess with scripted doors.
             return
         end
+        local keyRecord = types.Lockable.getKeyRecord(object)
+        if keyRecord == nil then
+            -- don't mess with doors that don't have keys
+            return
+        end
+
+        if types.Lockable.isLocked(object) and hasKey(object, actor) then
+            -- unlock the door since we had the key at some point.
+            settings.debugPrint("Player " .. actor.id .. " unlocked " .. object.recordId .. " (" .. object.id ..
+                                    ") with the keyring.")
+            types.Lockable.unlock(object)
+            types.Lockable.setTrapSpell(object, nil)
+            -- TODO: play unlock sound?
+            actor:sendEvent(settings.MOD_NAME .. "showUnlockMessage", {
+                key = keyRecord.name
+            })
+            return
+        end
+
         local destCell = types.Door.destCell(object)
-        if (types.Lockable.isLocked(object) == false) and types.Door.isTeleport(object) and (destCell ~= nil) and (destCell.id ~= actor.cell.id) and (destCell.isExterior ~= true) then
-            -- this door will teleport us to a new internal cell.
+        if (types.Lockable.isLocked(object) == false) and types.Door.isTeleport(object) and (destCell ~= nil) and
+            (destCell.id ~= actor.cell.id) and (destCell.isExterior ~= true) then
+            -- we are about to teleport into an interior cell.
             if hasKey(object, actor) ~= true then
                 -- we are trespassing!
-                settings.debugPrint("Player "..actor.id.." is trespassing in "..destCell.name.." ("..destCell.id..").")
+                settings.debugPrint("Player " .. actor.id .. " is trespassing in " .. destCell.name .. " (" ..
+                                        destCell.id .. ").")
                 persistedState[actor.id] = destCell.id
             end
         end
@@ -98,11 +117,11 @@ local function onCellChange(data)
     local trespassCellID = persistedState[data.player.id]
     if trespassCellID ~= nil then
         if data.newCellID ~= trespassCellID then
-            settings.debugPrint("Player "..data.player.id.." is no longer trespassing in "..trespassCellID..".")
+            settings.debugPrint("Player " .. data.player.id .. " is no longer trespassing in " .. trespassCellID .. ".")
             persistedState[data.player.id] = nil
         end
     end
-    
+
 end
 
 interfaces.ErnBurglary.onCellChangeCallback(onCellChange)
@@ -116,7 +135,7 @@ local function onSpottedChange(data)
     if trespassCellID == nil then
         return
     end
-    settings.debugPrint("Player was spotted trespassing in "..trespassCellID..".")
+    settings.debugPrint("Player was spotted trespassing in " .. trespassCellID .. ".")
 
     local fine = settings.trespassFine()
     if fine > 0 then
@@ -128,11 +147,10 @@ end
 interfaces.ErnBurglary.onSpottedChangeCallback(onSpottedChange)
 
 return {
-    eventHandlers = {
-    },
+    eventHandlers = {},
     engineHandlers = {
         onSave = saveState,
         onLoad = loadState,
-        onActivate = onActivate,
+        onActivate = onActivate
     }
 }

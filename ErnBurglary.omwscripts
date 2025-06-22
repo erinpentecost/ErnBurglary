@@ -2,4 +2,6 @@ PLAYER:scripts/ErnBurglary/player.lua
 GLOBAL:scripts/ErnBurglary/interface.lua
 GLOBAL:scripts/ErnBurglary/global.lua
 GLOBAL:scripts/ErnBurglary/interface_test.lua
+
 GLOBAL:scripts/ErnBurglary/trespass/global.lua
+PLAYER:scripts/ErnBurglary/trespass/player.lua

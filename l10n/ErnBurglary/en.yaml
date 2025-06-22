@@ -31,3 +31,5 @@ showNoWitnessesMessage: "No more witnesses."
 
 showWantedMessage: "Your burglary of {value} gold worth of goods was noticed."
 showExpelledMessage: "You've been expelled from {factionName} due to theft."
+
+showUnlockMessage: "Unlocked with {key} from keyring."

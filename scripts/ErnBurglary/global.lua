@@ -674,7 +674,9 @@ local function resolvePendingTheft(data)
     saveCellState(cellState)
 
     -- invoke callbacks
-    interfaces.ErnBurglary.__onStolen(stolenCallBacks)
+    if #stolenCallBacks > 0 then
+        interfaces.ErnBurglary.__onStolen(stolenCallBacks)
+    end
 end
 
 local function onCellExit(data)
