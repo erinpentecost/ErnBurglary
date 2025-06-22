@@ -16,23 +16,20 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local settings = require("scripts.ErnBurglary.settings")
 local interfaces = require('openmw.interfaces')
-local aux_util = require('openmw_aux.util')
+local types = require("openmw.types")
+local core = require("openmw.core")
+local localization = core.l10n(settings.MOD_NAME)
+local ui = require('openmw.ui')
 
-local function onSpottedChangeCallback(data)
-    settings.debugPrint("onSpottedChangeCallback(" .. aux_util.deepToString(data, 2) .. ")")
+local function showUnlockMessage(data)
+    settings.debugPrint("showUnlockMessage")
+    ui.showMessage(localization("showUnlockMessage", data))
 end
 
-interfaces.ErnBurglary.onSpottedChangeCallback(onSpottedChangeCallback)
 
-local function onStolenCallback(data)
-    settings.debugPrint("onStolenCallback(" .. aux_util.deepToString(data, 4) .. ")")
-end
+return {
+    eventHandlers = {
+        [settings.MOD_NAME .. "showUnlockMessage"] = showUnlockMessage,
+    },
+}
 
-interfaces.ErnBurglary.onStolenCallback(onStolenCallback)
-
-
-local function onCellChangeCallback(data)
-    settings.debugPrint("onCellChangeCallback(" .. aux_util.deepToString(data, 4) .. ")")
-end
-
-interfaces.ErnBurglary.onCellChangeCallback(onCellChangeCallback)

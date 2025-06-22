@@ -14,8 +14,7 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]]
-local settings = require("scripts.ErnBurglary.settings")
+]] local settings = require("scripts.ErnBurglary.settings")
 
 if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
@@ -32,29 +31,34 @@ local spottedPlayerStatus = {}
 -- - spotted (boolean)
 local function onSpottedChangeCallback(callback)
     table.insert(onSpottedCallbacks, callback)
+    settings.debugPrint("Registered callback #" .. #onSpottedCallbacks .. " for onSpottedChangeCallback().")
 end
 
 local function __onSpotted(player)
+    if (spottedPlayerStatus[player.id] == true) then
+        return
+    end
+    spottedPlayerStatus[player.id] = true
+
     for _, callback in ipairs(onSpottedCallbacks) do
-        if (spottedPlayerStatus[player.id] ~= true) then
-            spottedPlayerStatus[player.id] = true
-            callback({
-                player=player,
-                spotted=true,
-            })
-        end
+        callback({
+            player = player,
+            spotted = true
+        })
     end
 end
 
 local function __onNoWitnesses(player)
+    if (spottedPlayerStatus[player.id] == false) then
+        return
+    end
+    spottedPlayerStatus[player.id] = false
+
     for _, callback in ipairs(onSpottedCallbacks) do
-        if (spottedPlayerStatus[player.id] ~= false) then
-            spottedPlayerStatus[player.id] = false
-            callback({
-                player=player,
-                spotted=false,
-            })
-        end
+        callback({
+            player = player,
+            spotted = false
+        })
     end
 end
 
@@ -72,10 +76,30 @@ local onStolenCallbacks = {}
 -- - caught (boolean indicating if the player was caught stealing it)
 local function onStolenCallback(callback)
     table.insert(onStolenCallbacks, callback)
+    settings.debugPrint("Registered callback #" .. #onStolenCallbacks .. " for onStolenCallback().")
 end
 
 local function __onStolen(data)
     for _, callback in ipairs(onStolenCallbacks) do
+        callback(data)
+    end
+end
+
+local onCellChangeCallbacks = {}
+
+-- onCellChangeCallback adds a callback to be invoked whenever the Player
+-- changes their current cell.
+-- The param is a list of tables. Each table has these fields:
+-- - player
+-- - lastCellID
+-- - newCellID
+local function onCellChangeCallback(callback)
+    table.insert(onCellChangeCallbacks, callback)
+    settings.debugPrint("Registered callback #" .. #onCellChangeCallbacks .. " for onCellChangeCallbacks().")
+end
+
+local function __onCellChange(data)
+    for _, callback in ipairs(onCellChangeCallbacks) do
         callback(data)
     end
 end
@@ -86,7 +110,9 @@ end
 -- the player's UI mode changes into, or out of, "Dialogue" mode.
 -- This exists to allow for patching with Pause Control.
 local function setItemsAllowed(player, allowed)
-    player:sendEvent(settings.MOD_NAME .. "setItemsAllowed", {allowed=allowed})
+    player:sendEvent(settings.MOD_NAME .. "setItemsAllowed", {
+        allowed = allowed
+    })
 end
 
 return {
@@ -96,8 +122,10 @@ return {
         setItemsAllowed = setItemsAllowed,
         onSpottedChangeCallback = onSpottedChangeCallback,
         onStolenCallback = onStolenCallback,
+        onCellChangeCallback = onCellChangeCallback,
         __onSpotted = __onSpotted,
         __onNoWitnesses = __onNoWitnesses,
         __onStolen = __onStolen,
+        __onCellChange = __onCellChange
     }
 }

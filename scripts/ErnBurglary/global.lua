@@ -21,7 +21,6 @@ local interfaces = require('openmw.interfaces')
 local world = require('openmw.world')
 local types = require("openmw.types")
 local core = require("openmw.core")
-local async = require('openmw.async')
 local aux_util = require('openmw_aux.util')
 local storage = require('openmw.storage')
 
@@ -31,6 +30,10 @@ end
 
 -- Init settings first to init storage which is used everywhere.
 settings.initSettings()
+
+local function onNewGame()
+    settings.settingsStore:set("trespassFine", 10)
+end
 
 local persistedState = {}
 
@@ -163,31 +166,6 @@ local function trackOwnedItems(cellID, player)
     settings.debugPrint("trackOwnedItems(" .. tostring(cellID) .. ") end")
 end
 
-local function inferAreaOwner(cellID, playerID)
-    local cell = world.getCellById(cellID)
-    if cell.isExterior then
-        return nil
-    end
-
-    local highestCount = 0
-    local bestMatch = nil
-
-    local ownerToCount = {}
-    local cellState = getCellState(cellID, playerID)
-    for _, owner in pairs(cellState.itemIDtoOwnership) do
-        local key = common.ownerToString(owner)
-        if ownerToCount[key] == nil then
-            ownerToCount[key] = 0
-        end
-        ownerToCount[key] = ownerToCount[key] + 1
-        if ownerToCount[key] > highestCount then
-            highestCount = ownerToCount[key]
-            bestMatch = owner
-        end
-    end
-    return bestMatch
-end
-
 local skipNextBountyIncrease = false
 
 -- Save ownership data for containers when they are activated.
@@ -210,13 +188,8 @@ local function onActivate(object, actor)
         -- Objects in containers don't have owners.
         local owner = nil
         if common.serializeOwner(object.owner) ~= nil then
-            -- This doesn't work (yet?), but would be great.
             owner = common.serializeOwner(object.owner)
             settings.debugPrint("got container owner: " .. aux_util.deepToString(owner))
-        elseif settings.inferOwnership() then
-            -- Gross workaround to guess the owner.
-            owner = inferAreaOwner(actor.cell.id, actor.id)
-            settings.debugPrint("inferred area owner: " .. aux_util.deepToString(owner))
         end
 
         -- track items in the container
@@ -675,7 +648,9 @@ local function resolvePendingTheft(data)
     saveCellState(cellState)
 
     -- invoke callbacks
-    interfaces.ErnBurglary.__onStolen(stolenCallBacks)
+    if #stolenCallBacks > 0 then
+        interfaces.ErnBurglary.__onStolen(stolenCallBacks)
+    end
 end
 
 local function onCellExit(data)
@@ -721,6 +696,8 @@ local function onCellChange(data)
         player = data.player,
         cellID = data.newCellID
     })
+
+    interfaces.ErnBurglary.__onCellChange(data)
 end
 
 -- params:
@@ -850,6 +827,7 @@ return {
         onSave = saveState,
         onLoad = loadState,
         onActivate = onActivate,
-        onUpdate = onUpdate
+        onUpdate = onUpdate,
+        onNewGame = onNewGame,
     }
 }

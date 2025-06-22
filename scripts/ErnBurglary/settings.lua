@@ -38,12 +38,16 @@ local function bountyScale()
     return settingsStore:get("bountyScale")
 end
 
-local function lenientFactions()
-    return settingsStore:get("lenientFactions")
+local function trespassFine()
+    return settingsStore:get("trespassFine")
 end
 
-local function inferOwnership()
-    return settingsStore:get("inferOwnership")
+local function keyring()
+    return settingsStore:get("keyring")
+end
+
+local function lenientFactions()
+    return settingsStore:get("lenientFactions")
 end
 
 local function debugPrint(str, ...)
@@ -77,30 +81,41 @@ local function initSettings()
                 max = 100
             }
         }, {
+            key = "trespassFine",
+            name = "trespassFine_name",
+            description = "trespassFine_description",
+            default = 0,
+            renderer = "number",
+            argument = {
+                integer = true,
+                min = 0,
+                max = 1000
+            }
+        }, {
+            key = "keyring",
+            name = "keyring_name",
+            description = "keyring_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
             key = "revertBounties",
             name = "revertBounties_name",
             description = "revertBounties_description",
-            default = false,
+            default = true,
             renderer = "checkbox"
         }, {
             key = "quietMode",
             name = "quietMode_name",
             description = "quietMode_description",
-            default = false,
+            default = true,
             renderer = "checkbox"
         }, {
             key = "lenientFactions",
             name = "lenientFactions_name",
             description = "lenientFactions_description",
-            default = false,
+            default = true,
             renderer = "checkbox"
-        }, {
-            key = "inferOwnership",
-            name = "inferOwnership_name",
-            description = "inferOwnership_description",
-            default = false,
-            renderer = "checkbox"
-        }, {
+        },{
             key = "debugMode",
             name = "debugMode_name",
             description = "debugMode_description",
@@ -119,8 +134,9 @@ return {
     revertBounties = revertBounties,
     quietMode = quietMode,
     bountyScale = bountyScale,
+    trespassFine = trespassFine,
+    keyring = keyring,
     lenientFactions = lenientFactions,
-    inferOwnership = inferOwnership,
     debugMode = debugMode,
     debugPrint = debugPrint
 }
