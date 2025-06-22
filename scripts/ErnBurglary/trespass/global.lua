@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local settings = require("scripts.ErnBurglary.settings")
 local interfaces = require('openmw.interfaces')
 local types = require("openmw.types")
+local aux_util = require('openmw_aux.util')
 local core = require("openmw.core")
 
 -- Track all persistedState we've ever picked up.
@@ -45,8 +46,9 @@ local function hasKey(door, actor)
         return false
     end
     -- check if we previously had the key
-    local mapKey = actor.id .. keyRecord.id
+    local mapKey = "key_" .. actor.id .. keyRecord.id
     if persistedState[mapKey] == true then
+        settings.debugPrint("Remembered we have the key for " .. door.id .. ".")
         -- we had the key at one point.
         -- let them in.
         return true
@@ -54,18 +56,14 @@ local function hasKey(door, actor)
     -- check if we have the key right now.
     for _, item in ipairs(types.Actor.inventory(actor):getAll(types.Miscellaneous)) do
         if item.recordId == keyRecord.id then
+            settings.debugPrint("We currently have the key for " .. door.id .. ".")
             -- memorize ownership of the key.
             persistedState[mapKey] = true
-            if settings.keyring() then
-                -- delete the key
-                -- TODO: There is a bug here when a key is used for both doors and chests.
-                -- We don't auto-unlock chests.
-                item:remove()
-            end
             -- let them in.
             return true
         end
     end
+    settings.debugPrint("We don't have the key for " .. door.id .. ".")
     return false
 end
 
@@ -76,36 +74,27 @@ local function onActivate(object, actor)
     end
 
     if types.Door.objectIsInstance(object) then
-        settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player)")
+        settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player): "..aux_util.deepToString(object, 3))
         if types.Door.isOpen(object) then
             -- this means we are closing the door.
+            settings.debugPrint("door is open")
             return
         end
         local doorRecord = types.Door.records[object.recordId]
         if doorRecord.mwscript ~= nil then
             -- don't mess with scripted doors.
+            settings.debugPrint("door has script")
             return
         end
         local keyRecord = types.Lockable.getKeyRecord(object)
         if keyRecord == nil then
             -- don't mess with doors that don't have keys
-            return
-        end
-
-        if settings.keyring() and types.Lockable.isLocked(object) and hasKey(object, actor) then
-            -- unlock the door since we had the key at some point.
-            settings.debugPrint("Player " .. actor.id .. " unlocked " .. object.recordId .. " (" .. object.id ..
-                                    ") with the keyring.")
-            types.Lockable.unlock(object)
-            types.Lockable.setTrapSpell(object, nil)
-            actor:sendEvent(settings.MOD_NAME .. "showUnlockMessage", {
-                key = keyRecord.name
-            })
+            settings.debugPrint("door doesn't have a key")
             return
         end
 
         local destCell = types.Door.destCell(object)
-        if (types.Lockable.isLocked(object) == false) and types.Door.isTeleport(object) and (destCell ~= nil) and
+        if types.Door.isTeleport(object) and (destCell ~= nil) and
             (destCell.id ~= actor.cell.id) and (destCell.isExterior ~= true) then
             -- we are about to teleport into an interior cell.
             if hasKey(object, actor) ~= true then

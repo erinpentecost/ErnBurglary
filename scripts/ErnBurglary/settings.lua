@@ -42,10 +42,6 @@ local function trespassFine()
     return settingsStore:get("trespassFine")
 end
 
-local function keyring()
-    return settingsStore:get("keyring")
-end
-
 local function lenientFactions()
     return settingsStore:get("lenientFactions")
 end
@@ -92,12 +88,6 @@ local function initSettings()
                 max = 1000
             }
         }, {
-            key = "keyring",
-            name = "keyring_name",
-            description = "keyring_description",
-            default = false,
-            renderer = "checkbox"
-        }, {
             key = "revertBounties",
             name = "revertBounties_name",
             description = "revertBounties_description",
@@ -115,7 +105,7 @@ local function initSettings()
             description = "lenientFactions_description",
             default = true,
             renderer = "checkbox"
-        },{
+        }, {
             key = "debugMode",
             name = "debugMode_name",
             description = "debugMode_description",
@@ -135,7 +125,6 @@ return {
     quietMode = quietMode,
     bountyScale = bountyScale,
     trespassFine = trespassFine,
-    keyring = keyring,
     lenientFactions = lenientFactions,
     debugMode = debugMode,
     debugPrint = debugPrint
