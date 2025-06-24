@@ -72,7 +72,7 @@ local function newCellState(cellID, playerID)
         -- spottedByActorId is a map of actor id -> true
         spottedByActorId = {},
         -- newItems is a map of new items the player picked up while in the cell.
-        -- item id -> {item=item,count=(item.count)}
+        -- item id -> {item=item,count=(item.count),backupOwner=owner}
         newItems = {},
         -- startingBounty is the player's bounty when they enter a cell.
         startingBounty = 0
@@ -148,13 +148,13 @@ local function trackOwnedItems(cellID, player)
                 recordId = item.recordId
             }
             for k, v in pairs(common.getInventoryOwnership(types.NPC.inventory(item), backupOwner)) do
-                if v == nil then
+                if v.owner == nil then
                     -- Assume owner is the holder if not explicit.
-                    cellState.itemIDtoOwnership[k] = {
+                    cellState.itemIDtoOwnership[k.id] = {
                         recordId = item.recordId
                     }
                 else
-                    cellState.itemIDtoOwnership[k] = v
+                    cellState.itemIDtoOwnership[k] = v.owner
                 end
             end
             -- could do containers here, but they may not be resolved yet.
@@ -167,10 +167,13 @@ local function trackOwnedItems(cellID, player)
 end
 
 local skipNextBountyIncrease = false
+-- itemRecordIDtoOwnerOverride is a backup way to get owners for items.
+local itemRecordIDtoOwnerOverride = {}
 
 -- Save ownership data for containers when they are activated.
 -- Adds elements to state.itemIDtoOwnership.
 local function onActivate(object, actor)
+    itemRecordIDtoOwnerOverride = {}
 
     if types.Player.objectIsInstance(actor) ~= true then
         return
@@ -195,8 +198,15 @@ local function onActivate(object, actor)
         -- track items in the container
         local cellState = getCellState(actor.cell.id, actor.id)
         for k, v in pairs(common.getInventoryOwnership(inventory, owner)) do
-            if v ~= nil then
-                cellState.itemIDtoOwnership[k] = v
+            if v.owner ~= nil then
+                cellState.itemIDtoOwnership[k] = v.owner
+
+                itemRecordIDtoOwnerOverride[v.item.recordId] = v.owner
+                if string.match(v.item.recordId, "gold_.*") then
+                    -- special case for stacks of gold.
+                    itemRecordIDtoOwnerOverride["gold_001"] = v.owner
+                end
+
                 settings.debugPrint("tracked item in container: " .. k .. " has owner " .. aux_util.deepToString(owner))
             else
                 settings.debugPrint("tracked item in container: " .. k .. " has no owner")
@@ -207,7 +217,15 @@ local function onActivate(object, actor)
         -- This is for Shop Around compliance.
         -- If we are picking up an item off a shelf, check to see if it still
         -- has ownership. If it doesn't, remove it from the tracked list.
-        if common.serializeOwner(object.owner) == nil then
+        local owner = common.serializeOwner(object.owner)
+        
+        itemRecordIDtoOwnerOverride[object.recordId] = owner
+        if string.match(object.recordId, "gold_.*") then
+            -- special case for stacks of gold.
+            itemRecordIDtoOwnerOverride["gold_001"] = owner
+        end
+
+        if owner == nil then
             -- remove from tracker
             local cellState = getCellState(actor.cell.id, actor.id)
             if cellState.itemIDtoOwnership[object.id] ~= nil then
@@ -217,6 +235,8 @@ local function onActivate(object, actor)
             end
         end
     end
+
+    settings.debugPrint("backup owners: " .. aux_util.deepToString(itemRecordIDtoOwnerOverride, 3))
 end
 
 -- onSpotted is called when a player is spotted by an NPC.
@@ -253,7 +273,6 @@ local function onCellEnter(data)
     -- When we enter a cell, we need to persist ownership data
     -- for all items. We have to do this because ownership data
     -- is lost when the item is placed in the player's inventory.
-
     trackOwnedItems(data.cellID, data.player)
 
     -- settings.debugPrint("onCellEnter() done. new cell state: " ..
@@ -509,6 +528,11 @@ local function resolvePendingTheft(data)
         -- subsequent one. This is mitigated though by the new item forgiveness check.
         local owner = cellState.itemIDtoOwnership[newItem.id]
 
+        if owner == nil then
+            settings.debugPrint("using backup owner for " .. itemRecord.name)
+            owner = newItemBag.backupOwner
+        end
+
         if (owner == nil) then
             -- the item is not owned.
             settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
@@ -717,18 +741,29 @@ local function onNewItems(data)
             -- check for stack change
             local oldCount = cellState.newItems[itemBag.item.id].count
             local newCount = oldCount + itemBag.count
-            cellState.newItems[itemBag.item.id] = {
+            itemBag = {
                 item = itemBag.item,
                 count = newCount
             }
             settings.debugPrint("increased stack of new item " .. itemBag.item.recordId .. " from " .. oldCount ..
                                     " to " .. newCount)
-        else
-            -- totally new item
-            cellState.newItems[itemBag.item.id] = itemBag
         end
+
+        local backupOwner = itemRecordIDtoOwnerOverride[itemBag.item.recordId]
+        if backupOwner ~= nil then
+            settings.debugPrint("found backup owner of new item " .. itemBag.item.recordId .. ": " ..
+                                    aux_util.deepToString(backupOwner, 3))
+            itemBag = {
+                item = itemBag.item,
+                count = itemBag.count,
+                backupOwner = backupOwner
+            }
+        end
+
+        cellState.newItems[itemBag.item.id] = itemBag
     end
     saveCellState(cellState)
+    itemRecordIDtoOwnerOverride = {}
 end
 
 local infrequentMap = infrequent.FunctionCollection:new()
@@ -828,6 +863,6 @@ return {
         onLoad = loadState,
         onActivate = onActivate,
         onUpdate = onUpdate,
-        onNewGame = onNewGame,
+        onNewGame = onNewGame
     }
 }

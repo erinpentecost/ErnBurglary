@@ -47,14 +47,15 @@ local function stringToOwner(str)
     return owner
 end
 
+-- getInventoryOwnership returns a map of item instance id to {item, owner}.
 local function getInventoryOwnership(inventory, backupOwner)
     local itemIDtoOwnership = {}
     for _, itemInContainer in ipairs(inventory:getAll()) do
         if (itemInContainer.owner ~= nil) and ((itemInContainer.owner.recordId ~= nil) or (itemInContainer.factionId ~= nil)) then
-            itemIDtoOwnership[itemInContainer.id] = serializeOwner(itemInContainer.owner)
+            itemIDtoOwnership[itemInContainer.id] = {item=itemInContainer, owner=serializeOwner(itemInContainer.owner)}
             --settings.debugPrint("found owner for item in container: " .. itemInContainer.recordId)
         else
-            itemIDtoOwnership[itemInContainer.id] = serializeOwner(backupOwner)
+            itemIDtoOwnership[itemInContainer.id] = {item=itemInContainer, owner=serializeOwner(backupOwner)}
             --settings.debugPrint("no owner for item in container: " .. itemInContainer.recordId)
         end
     end

@@ -102,6 +102,7 @@ local function onActivate(object, actor)
                 settings.debugPrint("Player " .. actor.id .. " is trespassing in " .. destCell.name .. " (" ..
                                         destCell.id .. ").")
                 persistedState[actor.id] = destCell.id
+                actor:sendEvent(settings.MOD_NAME .. "showTrespassingMessage", {})
             end
         end
     end
