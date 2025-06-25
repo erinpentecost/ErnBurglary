@@ -284,6 +284,7 @@ local function updateSpottedSpell()
         types.Actor.activeSpells(self):add({
             id = "ernburglary_spotted",
             effects = {0},
+            ignoreResistances = true,
             ignoreSpellAbsorption = true,
             ignoreReflect = true
         })
