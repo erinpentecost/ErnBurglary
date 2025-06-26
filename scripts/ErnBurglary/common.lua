@@ -62,6 +62,30 @@ local function getInventoryOwnership(inventory, backupOwner)
     return itemIDtoOwnership
 end
 
+local function atLeastRank(npc, factionID, rank)
+    local inFaction = false
+    for _, foundID in pairs(types.NPC.getFactions(npc)) do
+        if foundID == factionID then
+            inFaction = true
+            break
+        end
+    end
+    if inFaction == false then
+        settings.debugPrint("your rank in " .. factionID .. " is <not a member>")
+        return false
+    end
+
+    local selfRank = types.NPC.getFactionRank(npc, factionID)
+    settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
+    if selfRank == nil then
+        return false
+    elseif (rank == nil) then
+        return true
+    else
+        return selfRank >= rank
+    end
+end
+
 local function test()
     local npcOwner = {
         recordId = "person",
@@ -99,4 +123,5 @@ return {
     stringToOwner = stringToOwner,
     serializeOwner = serializeOwner,
     getInventoryOwnership = getInventoryOwnership,
+    atLeastRank = atLeastRank,
 }

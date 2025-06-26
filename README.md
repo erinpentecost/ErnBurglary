@@ -16,8 +16,14 @@ The punishment for red-handed theft is reduced to a token 1 gp in order to avoid
 ## Re-implementation of No Witness No Bounty
 You can optionally enable behavior that mimics what you see in *No Witness No Bounty*. If there are no witnesses by the time you leave the area, all bounties will reset to what they were when you entered. I had to re-implement this because getting them to work together would be harder.
 
+## Trespassing
+When you enter an area through a door that was locked with a key, but you don't have that key, you'll be considered trespassing. If the door is owned by someone, it's also considered trespassing to use it.
+If you get Spotted while trespassing, you'll incur a 10 gold fine (configurable).
+So long as you've used the key on the door once, you will be allowed in the area through that door from then on. You don't have to keep the key forever.
+
 ## Indicators
 - While you're spotted in the area, a 5pt Drain Sneak effect is applied. This is removed as soon as you're no longer spotted.
+- If you enter an area and are trespassing, you'll get an alert.
 - When you enter sneak mode, you'll get an alert if you were previously spotted.
 - If you're spotted while in sneak mode, you'll also get an alert.
 - If all the witnesses die, you'll get another alert.
@@ -26,7 +32,7 @@ You can optionally enable behavior that mimics what you see in *No Witness No Bo
 You can optionally turn off all the alerts except the last one.
 
 ## How it Works
-If you're near an NPC and they say something, the mod checks if you are sneaking. If you are sneaking, the mod reproduces the same vanilla game logic for sneak detection. If you fail that check, then the NPC is marked as having spotted you.
+If you're near an NPC and they say something, the mod checks if you are sneaking. If you are sneaking, the mod reproduces the same vanilla game logic for sneak detection. If you fail that check, then the NPC is marked as having spotted you. If you're super close to the NPC, they don't have to say anything.
 
 Every item you pick up is also tracked, unless you picked it up during a dialogue or barter screen.
 
