@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local interfaces = require('openmw.interfaces')
 local types = require("openmw.types")
 local aux_util = require('openmw_aux.util')
+local common = require("scripts.ErnBurglary.common")
 local core = require("openmw.core")
 
 -- Track all persistedState we've ever picked up.
@@ -67,6 +68,14 @@ local function hasKey(door, actor)
     return false
 end
 
+local function setIsTrespassing(actor, destCell)
+    -- we are trespassing!
+    settings.debugPrint("Player " .. actor.id .. " is trespassing in " .. destCell.name .. " (" ..
+    destCell.id .. ").")
+    persistedState[actor.id] = destCell.id
+    actor:sendEvent(settings.MOD_NAME .. "showTrespassingMessage", {})
+end
+
 local function onActivate(object, actor)
 
     if types.Player.objectIsInstance(actor) ~= true then
@@ -86,23 +95,38 @@ local function onActivate(object, actor)
             settings.debugPrint("door has script")
             return
         end
-        local keyRecord = types.Lockable.getKeyRecord(object)
-        if keyRecord == nil then
-            -- don't mess with doors that don't have keys
-            settings.debugPrint("door doesn't have a key")
+
+        -- don't mess with non-teleport doors.
+        local destCell = types.Door.destCell(object)
+        if (types.Door.isTeleport(object) == false) or (destCell == nil) or
+            (destCell.id == actor.cell.id) or (destCell.isExterior) then
+                settings.debugPrint("door doesn't teleport into an interior")
+                return
+        end
+
+        -- locked doors won't teleport us on activate
+        if types.Lockable.isLocked(object) then
+            settings.debugPrint("door is locked")
             return
         end
 
-        local destCell = types.Door.destCell(object)
-        if types.Door.isTeleport(object) and (destCell ~= nil) and
-            (destCell.id ~= actor.cell.id) and (destCell.isExterior ~= true) then
-            -- we are about to teleport into an interior cell.
+        local keyRecord = types.Lockable.getKeyRecord(object)
+        if keyRecord ~= nil then
+            settings.debugPrint("door has a key")
+            -- door has a key, so check if we have it.
             if hasKey(object, actor) ~= true then
-                -- we are trespassing!
-                settings.debugPrint("Player " .. actor.id .. " is trespassing in " .. destCell.name .. " (" ..
-                                        destCell.id .. ").")
-                persistedState[actor.id] = destCell.id
-                actor:sendEvent(settings.MOD_NAME .. "showTrespassingMessage", {})
+                setIsTrespassing(actor, destCell)
+            end
+            return
+        end
+
+        if object.owner ~= nil then
+            if object.owner.recordId ~= nil then
+                settings.debugPrint("door is owned by "..object.owner.recordId)
+                setIsTrespassing(actor, destCell)
+            elseif (object.owner.factionId ~= nil) and (common.atLeastRank(actor, object.owner.factionId, object.owner.factionRank) == false) then
+                settings.debugPrint("door is owned by "..object.owner.factionId)
+                setIsTrespassing(actor, destCell)
             end
         end
     end

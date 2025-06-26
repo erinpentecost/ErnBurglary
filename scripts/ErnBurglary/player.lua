@@ -60,7 +60,10 @@ local function trackInventory()
     itemsInInventory = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
 
-        itemsInInventory[item.id] = {item=item,count=item.count}
+        itemsInInventory[item.id] = {
+            item = item,
+            count = item.count
+        }
     end
 end
 trackInventory()
@@ -97,8 +100,8 @@ local function elusiveness(distance)
     end
 
     local elusivenessScore = (sneakTerm + agilityTerm + luckTerm) * distanceTerm * fatigueTerm + chameleon
-    settings.debugPrint("elusiveness: " .. elusivenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
-                            luckTerm .. ") * " .. distanceTerm .. " * " .. fatigueTerm .. " + " .. chameleon)
+    -- settings.debugPrint("elusiveness: " .. elusivenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
+    --                        luckTerm .. ") * " .. distanceTerm .. " * " .. fatigueTerm .. " + " .. chameleon)
     return elusivenessScore
 end
 
@@ -121,20 +124,13 @@ local function awareness(actor)
     end
 
     local awarenessScore = (sneakTerm + agilityTerm + luckTerm - blind) * fatigueTerm * directionMult
-    settings.debugPrint("awareness: " .. awarenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
-                            luckTerm .. "-" .. blind .. ") * " .. fatigueTerm .. " * " .. directionMult)
+    -- settings.debugPrint("awareness: " .. awarenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
+    --                        luckTerm .. "-" .. blind .. ") * " .. fatigueTerm .. " * " .. directionMult)
     return awarenessScore
 end
 
 -- sneakCheck should return true if the actor can't see the player.
-local function sneakCheck(actor)
-    local distance = (self.position - actor.position):length()
-
-    -- always pass the check if sufficiently far away.
-    if distance > 400 then
-        settings.debugPrint("too far away: " .. actor.recordId)
-        return true
-    end
+local function sneakCheck(actor, distance)
 
     local invisibilityEffect = types.Actor.activeEffects(self):getEffect(core.magic.EFFECT_TYPE.Invisibility)
     if (invisibilityEffect ~= nil) and (invisibilityEffect.magnitude > 0) then
@@ -150,7 +146,7 @@ local function sneakCheck(actor)
     local sneakChance = math.min(100, math.max(0, elusiveness(distance) - awareness(actor)))
     local roll = math.random(0, 100)
 
-    settings.debugPrint("sneak chance: " .. sneakChance .. ", roll: " .. roll)
+    -- settings.debugPrint("sneak chance: " .. sneakChance .. ", roll: " .. roll)
 
     return sneakChance >= roll
 end
@@ -189,7 +185,8 @@ local function showNoWitnessesMessage(data)
 
     settings.debugPrint("showNoWitnessesMessage")
     spottedByActorID = {}
-    if settings.quietMode() ~= true then
+    if (settings.quietMode() ~= true) and (warnCooldownTimer <= 0) then
+        warnCooldownTimer = warnCooldown
         ui.showMessage(localization("showNoWitnessesMessage", {}))
     end
 end
@@ -203,6 +200,34 @@ local function isTalking(actor)
     return core.sound.isSayActive(actor)
 end
 
+local function sendSpottedEvent(npc)
+    if (spottedByActorID[npc.id] == true) then
+        return
+    end
+
+    settings.debugPrint("sending spotted by event for " .. npc.recordId)
+
+    spottedByActorID[npc.id] = true
+    spotted = true
+
+    core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
+        player = self,
+        npc = npc,
+        cellID = self.cell.id
+    })
+
+    -- Send notice if sneaking.
+    if sneaking and (warnCooldownTimer <= 0) then
+        warnCooldownTimer = warnCooldown
+        local npcName = types.NPC.record(npc).name
+        if settings.quietMode() ~= true then
+            ui.showMessage(localization("showSpottedMessage", {
+                actorName = npcName
+            }))
+        end
+    end
+end
+
 local function detectionCheck(dt)
 
     warnCooldownTimer = warnCooldownTimer - dt
@@ -210,51 +235,49 @@ local function detectionCheck(dt)
     -- find out which NPC is talking
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
-        if spottedByActorID[actor.id] == nil then
-            if isTalking(actor) and (sneakCheck(actor) ~= true) then
-                spottedByActorID[actor.id] = true
-                settings.debugPrint("sending spotted by event for " .. actor.recordId)
-                core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
-                    player = self,
-                    npc = actor,
-                    cellID = self.cell.id
-                })
-                spotted = true
-                -- Send notice if sneaking.
-                if sneaking and (warnCooldownTimer <= 0) then
-                    warnCooldownTimer = warnCooldown
-                    local npcName = types.NPC.record(actor).name
-                    if settings.quietMode() ~= true then
-                        ui.showMessage(localization("showSpottedMessage", {
-                            actorName = npcName
-                        }))
-                    end
+        if (spottedByActorID[actor.id] ~= true) and (actor.id ~= self.id) and types.NPC.objectIsInstance(actor) then
+            local distance = (self.position - actor.position):length()
+            if distance <= 400 then
+                local sneakResult = sneakCheck(actor, distance)
+                if (isTalking(actor) or (distance <= 70)) and (sneakResult ~= true) then
+                    sendSpottedEvent(actor)
                 end
             end
+
         end
     end
 end
 
-infrequentMap:addCallback("detection", 0.11, detectionCheck)
+infrequentMap:addCallback("detection", 0.2, detectionCheck)
 
 local function inventoryChangeCheck(dt)
     local newItemsList = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
         local itemBag = itemsInInventory[item.id]
         if itemBag == nil then
-            local newBag = {item=item,count=(item.count)}
+            local newBag = {
+                item = item,
+                count = (item.count)
+            }
             -- brand new item.
             table.insert(newItemsList, newBag)
-            settings.debugPrint("found "..tostring(newBag.count).." new item: " .. aux_util.deepToString(item, 2))
+            settings.debugPrint("found " .. tostring(newBag.count) .. " new item: " .. aux_util.deepToString(item, 2))
             -- don't re-add the item
             itemsInInventory[item.id] = newBag
         elseif item.count > itemBag.count then
             -- the count of the item in the player inventory went up.
-            local newBag = {item=item,count=(item.count - itemBag.count)}
+            local newBag = {
+                item = item,
+                count = (item.count - itemBag.count)
+            }
             table.insert(newItemsList, newBag)
-            settings.debugPrint("found "..tostring(newBag.count).." new items in stack: " .. aux_util.deepToString(item, 2))
+            settings.debugPrint("found " .. tostring(newBag.count) .. " new items in stack: " ..
+                                    aux_util.deepToString(item, 2))
             -- update count in stack
-            local updatedBag = {item=item,count=(item.count)}
+            local updatedBag = {
+                item = item,
+                count = (item.count)
+            }
             itemsInInventory[item.id] = updatedBag
         end
     end
@@ -351,12 +374,27 @@ local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
 
+local lastNPCActivated = nil
+local function onNPCActivated(data)
+    -- this is called before dialogue and before pickpocketing
+    lastNPCActivated = data.npc
+end
+
 local function UiModeChanged(data)
     if data.newMode == "Dialogue" then
         settings.debugPrint("in dialogue")
+        if lastNPCActivated ~= nil then
+            settings.debugPrint("talking with " .. lastNPCActivated.recordId .. ", they spot us for free")
+            -- this is probably the NPC talking to us.
+            -- they get to spot us for free.
+            sendSpottedEvent(lastNPCActivated)
+        end
         -- this is for a pause control patch
         inDialogue = true
+        -- bounty check is for detecting bounty payoffs
         bounty = types.Player.getCrimeLevel(self)
+
+        lastNPCActivated = nil
     elseif data.oldMode == "Dialogue" then
         settings.debugPrint("was in dialogue")
         inDialogue = false
@@ -374,6 +412,8 @@ local function UiModeChanged(data)
                 previousBounty = bounty
             })
         end
+
+        lastNPCActivated = nil
     end
 end
 
@@ -391,6 +431,7 @@ return {
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
         [settings.MOD_NAME .. "showNoWitnessesMessage"] = showNoWitnessesMessage,
         [settings.MOD_NAME .. "setItemsAllowed"] = setItemsAllowed,
+        [settings.MOD_NAME .. "onNPCActivated"] = onNPCActivated,
         UiModeChanged = UiModeChanged
     },
     engineHandlers = {

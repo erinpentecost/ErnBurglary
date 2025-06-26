@@ -234,9 +234,15 @@ local function onActivate(object, actor)
                 saveCellState(cellState)
             end
         end
+    elseif types.NPC.objectIsInstance(object) then
+        settings.debugPrint("activated "..object.recordId)
+        actor:sendEvent(settings.MOD_NAME .. "onNPCActivated", {
+            npc = object
+        })
+        
     end
 
-    settings.debugPrint("backup owners: " .. aux_util.deepToString(itemRecordIDtoOwnerOverride, 3))
+    --settings.debugPrint("backup owners: " .. aux_util.deepToString(itemRecordIDtoOwnerOverride, 3))
 end
 
 -- onSpotted is called when a player is spotted by an NPC.
@@ -328,30 +334,6 @@ local function factionsOfNPCs(npcIDtoInstanceMap)
         end
     end
     return out
-end
-
-local function atLeastRank(npc, factionID, rank)
-    local inFaction = false
-    for _, foundID in pairs(types.NPC.getFactions(npc)) do
-        if foundID == factionID then
-            inFaction = true
-            break
-        end
-    end
-    if inFaction == false then
-        settings.debugPrint("your rank in " .. factionID .. " is <not a member>")
-        return false
-    end
-
-    local selfRank = types.NPC.getFactionRank(npc, factionID)
-    settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
-    if selfRank == nil then
-        return false
-    elseif (rank == nil) then
-        return true
-    else
-        return selfRank >= rank
-    end
 end
 
 local function increaseBounty(player, amount)
@@ -515,17 +497,6 @@ local function resolvePendingTheft(data)
             value = value * newItemBag.count
         end
 
-        -- TODO: This can fail sometimes with stacks. If a player already has an
-        -- item, and they steal more of it that is owned, the instance the player
-        -- has has its count increased by the difference and the new item is destroyed.
-        -- We no longer have the ID of the new item, so our cached lookup fails.
-        -- Could do a workaround where if the owner is not found by id, consult a
-        -- cache that is indexed on item.recordId. That would result in false positives,
-        -- which is not a fun experience. For now, this bug is acceptable.
-        --
-        -- The reverse is also possible. If a player steals an item, and then buys
-        -- more of it so that it stacks, they would be charged with theft for each
-        -- subsequent one. This is mitigated though by the new item forgiveness check.
         local owner = cellState.itemIDtoOwnership[newItem.id]
 
         if owner == nil then
@@ -601,7 +572,7 @@ local function resolvePendingTheft(data)
                     caught = false
                 })
             end
-        elseif (owner.factionId ~= nil) and (atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
+        elseif (owner.factionId ~= nil) and (common.atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
             settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
                                     newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
                                     tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
