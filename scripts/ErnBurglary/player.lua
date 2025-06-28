@@ -330,6 +330,10 @@ local function onUpdate(dt)
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
 
         -- run all checks since we don't want to lose info
+        -- TODO: detection check is happening here, but it's executing inside the
+        -- NEW cell rather than the current cell. we need that spot to be tracked
+        -- only on the NEW cell. the inventory check needs to still happen here,
+        -- though.
         infrequentMap:callAll()
 
         -- now process cell change

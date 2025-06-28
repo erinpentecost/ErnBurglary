@@ -28,6 +28,7 @@ local function addCoroutine(c)
 end
 
 local function onUpdate()
+    -- Only run one callback per frame.
     if #coroutines > 0 then
         local c = table.remove(coroutines, 1)
         coroutine.resume(c)
