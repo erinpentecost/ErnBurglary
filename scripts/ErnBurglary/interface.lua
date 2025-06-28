@@ -21,6 +21,19 @@ if require("openmw.core").API_REVISION < 62 then
     return
 end
 
+local coroutines = {}
+
+local function addCoroutine(c)
+    table.insert(coroutines, c)
+end
+
+local function onUpdate()
+    if #coroutines > 0 then
+        local c = table.remove(coroutines, 1)
+        coroutine.resume(c)
+    end
+end
+
 local onSpottedCallbacks = {}
 local spottedPlayerStatus = {}
 
@@ -41,10 +54,7 @@ local function __onSpotted(player)
     spottedPlayerStatus[player.id] = true
 
     for _, callback in ipairs(onSpottedCallbacks) do
-        callback({
-            player = player,
-            spotted = true
-        })
+        addCoroutine(coroutine.wrap(callback, {player = player, spotted = true}))
     end
 end
 
@@ -55,10 +65,7 @@ local function __onNoWitnesses(player)
     spottedPlayerStatus[player.id] = false
 
     for _, callback in ipairs(onSpottedCallbacks) do
-        callback({
-            player = player,
-            spotted = false
-        })
+        addCoroutine(coroutine.wrap(callback, {player = player, spotted = false}))
     end
 end
 
@@ -81,7 +88,7 @@ end
 
 local function __onStolen(data)
     for _, callback in ipairs(onStolenCallbacks) do
-        callback(data)
+        addCoroutine(coroutine.wrap(callback, data))
     end
 end
 
@@ -100,7 +107,7 @@ end
 
 local function __onCellChange(data)
     for _, callback in ipairs(onCellChangeCallbacks) do
-        callback(data)
+        addCoroutine(coroutine.wrap(callback, data))
     end
 end
 
@@ -127,5 +134,8 @@ return {
         __onNoWitnesses = __onNoWitnesses,
         __onStolen = __onStolen,
         __onCellChange = __onCellChange
+    },
+    engineHandlers = {
+        onUpdate = onUpdate,
     }
 }
