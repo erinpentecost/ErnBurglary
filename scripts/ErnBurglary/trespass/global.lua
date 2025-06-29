@@ -146,6 +146,9 @@ end
 interfaces.ErnBurglary.onCellChangeCallback(onCellChange)
 
 local function onSpottedChange(data)
+    -- TODO: fails when we change cell but the spot was calculated before we finished changing.
+    -- we could stay spotted through a cell change.
+
     if data.spotted == false then
         return
     end

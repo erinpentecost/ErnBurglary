@@ -22,8 +22,25 @@ local core = require("openmw.core")
 local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
 
+local pendingMessage = nil
+
+local function queueMessage(fmt, args)
+    pendingMessage = {fmt=fmt, args=args, delay=0.3}
+end
+
+local sneaking = false
+local spotted = false
+
+local function onSneakChange(sneakStatus)
+    sneaking = sneakStatus
+    if (settings.quietMode() ~= true) and sneaking and spotted then
+        queueMessage(localization("showWarningMessage", {}))
+    end
+end
+
 local function alertsOnSpottedChange(data)
     if data.spotted == false then
+        spotted = false
         for _, spell in pairs(types.Actor.activeSpells(self)) do
             if spell.id == "ernburglary_spotted" then
                 types.Actor.activeSpells(self):remove(spell.activeSpellId)
@@ -32,10 +49,11 @@ local function alertsOnSpottedChange(data)
 
         -- this will execute on every cell change
         settings.debugPrint("showNoWitnessesMessage")
-        if (settings.quietMode() ~= true) then
-            ui.showMessage(localization("showNoWitnessesMessage", {}))
+        if (settings.quietMode() ~= true) and sneaking then
+            queueMessage(localization("showNoWitnessesMessage", {}))
         end
     else
+        spotted = true
         types.Actor.activeSpells(self):add({
             id = "ernburglary_spotted",
             effects = {0},
@@ -45,16 +63,50 @@ local function alertsOnSpottedChange(data)
         })
 
         local npcName = types.NPC.record(data.npc).name
-        if settings.quietMode() ~= true then
-            ui.showMessage(localization("showSpottedMessage", {
+        if (settings.quietMode() ~= true) and sneaking then
+            queueMessage(localization("showSpottedMessage", {
                 actorName = npcName
             }))
         end
     end
 end
 
+local function showWantedMessage(data)
+    settings.debugPrint("showWantedMessage")
+    ui.showMessage(localization("showWantedMessage", {
+        value = data.value
+    }))
+end
+
+local function showExpelledMessage(data)
+    settings.debugPrint("showExpelledMessage")
+    local faction = core.factions.records[data.faction]
+    ui.showMessage(localization("showExpelledMessage", {
+        factionName = data.faction.name
+    }))
+end
+
+local function onUpdate(dt)
+    if pendingMessage == nil then
+        return
+    end
+    pendingMessage.delay = pendingMessage.delay - dt
+    if pendingMessage.delay > 0 then
+        return
+    end
+    ui.showMessage(pendingMessage.fmt, pendingMessage.args)
+    pendingMessage = nil
+end
+
+
 return {
     eventHandlers = {
-        [settings.MOD_NAME .. "alertsOnSpottedChange"] = alertsOnSpottedChange
+        [settings.MOD_NAME .. "alertsOnSpottedChange"] = alertsOnSpottedChange,
+        [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
+        [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
+        [settings.MOD_NAME .. "onSneakChange"] = onSneakChange,
+    },
+    engineHandlers = {
+        onUpdate = onUpdate
     }
 }

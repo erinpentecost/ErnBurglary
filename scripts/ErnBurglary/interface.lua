@@ -32,20 +32,23 @@ end
 
 local coroutines = {}
 
-local function addCoroutine(callback, data, eventName)
+local function addCoroutine(callback, data)
     isFunction(callback)
+    if data == nil then
+        error("data is nil")
+    end
     table.insert(coroutines, {
-        c = coroutine.wrap(callback, data),
-        event = eventName
+        c = callback,
+        data = data
     })
 end
 
 local function onUpdate()
     -- Only run one callback per frame.
     if #coroutines > 0 then
-        local c = table.remove(coroutines, 1)
-        settings.debugPrint(tostring(c.event) .. ": " .. coroutine.status(c.c))
-        coroutine.resume(c.c)
+        local bag = table.remove(coroutines, 1)
+        --settings.debugPrint("Running callback with data=".. aux_util.deepToString(bag.data, 2))
+        bag.c(bag.data)
     end
 end
 
@@ -63,7 +66,7 @@ local function onSpottedChangeCallback(callback)
     settings.debugPrint("Registered callback #" .. #onSpottedCallbacks .. " for onSpottedChangeCallback().")
 end
 
-local function __onSpotted(player, npc)
+local function __onSpotted(player, npc, cellID)
     if (spottedPlayerStatus[player.id] == true) then
         return
     end
@@ -73,12 +76,13 @@ local function __onSpotted(player, npc)
         addCoroutine(callback, {
             player = player,
             npc = npc,
-            spotted = true
-        }, "onSpottedCallback")
+            spotted = true,
+            cellID = cellID
+        })
     end
 end
 
-local function __onNoWitnesses(player)
+local function __onNoWitnesses(player, cellID)
     if (spottedPlayerStatus[player.id] == false) then
         return
     end
@@ -87,8 +91,9 @@ local function __onNoWitnesses(player)
     for _, callback in ipairs(onSpottedCallbacks) do
         addCoroutine(callback, {
             player = player,
-            spotted = false
-        }, "onSpottedCallback")
+            spotted = false,
+            cellID = cellID
+        })
     end
 end
 
@@ -112,7 +117,7 @@ end
 
 local function __onStolen(data)
     for _, callback in ipairs(onStolenCallbacks) do
-        addCoroutine(callback, data, "onStolenCallback")
+        addCoroutine(callback, data)
     end
 end
 
@@ -132,7 +137,7 @@ end
 
 local function __onCellChange(data)
     for _, callback in ipairs(onCellChangeCallbacks) do
-        addCoroutine(callback, data, "onCellChange")
+        addCoroutine(callback, data)
     end
 end
 

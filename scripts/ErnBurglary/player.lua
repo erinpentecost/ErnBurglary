@@ -32,9 +32,6 @@ interfaces.Settings.registerPage {
     description = "description"
 }
 
--- warnCooldown stops us from spamming people
-local warnCooldown = 15
-
 -- lastCellID will be nil if loading from a save game.
 -- otherwise, it will be the cell we just moved from.
 local lastCellID = nil
@@ -64,21 +61,6 @@ local function trackInventory()
     end
 end
 trackInventory()
-
-local function showWantedMessage(data)
-    settings.debugPrint("showWantedMessage")
-    ui.showMessage(localization("showWantedMessage", {
-        value = data.value
-    }))
-end
-
-local function showExpelledMessage(data)
-    settings.debugPrint("showExpelledMessage")
-    local faction = core.factions.records[data.faction]
-    ui.showMessage(localization("showExpelledMessage", {
-        factionName = data.faction.name
-    }))
-end
 
 local function elusiveness(distance)
     -- https://en.uesp.net/wiki/Morrowind:Sneak
@@ -152,13 +134,11 @@ local function registerHandlers()
     local sneakGroups = {"sneakforward", "sneakleft", "sneakright", "sneakback"}
     for _, group in ipairs(sneakGroups) do
         interfaces.AnimationController.addTextKeyHandler(group, function(group, key)
-            --[[if (sneaking == false) and spotted and (warnCooldownTimer <= 0) then
-                -- just started sneaking, but was spotted earlier.
-                if settings.quietMode() ~= true then
-                    ui.showMessage(localization("showWarningMessage", {}))
-                end
-                warnCooldownTimer = warnCooldown
-            end]]
+
+            if sneaking == false then
+                self:sendEvent(settings.MOD_NAME .. "onSneakChange", true)
+            end
+
             sneaking = true
         end)
     end
@@ -167,6 +147,11 @@ local function registerHandlers()
                             "runback"}
     for _, group in ipairs(nonSneakGroups) do
         interfaces.AnimationController.addTextKeyHandler(group, function(group, key)
+
+            if sneaking == true then
+                self:sendEvent(settings.MOD_NAME .. "onSneakChange", false)
+            end
+
             sneaking = false
         end)
     end
@@ -174,19 +159,13 @@ end
 
 registerHandlers()
 
-
 local function isTalking(actor)
-    if types.Actor.isDead(actor) or types.Actor.isDeathFinished(actor) then
-        return false
-    end
     return core.sound.isSayActive(actor)
 end
 
 local function sendSpottedEvent(npc)
 
     settings.debugPrint("sending spotted by event for " .. npc.recordId)
-
-    spotted = true
 
     core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
         player = self,
@@ -200,7 +179,8 @@ local function detectionCheck(dt)
     -- find out which NPC is talking
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
-        if (actor.id ~= self.id) and types.NPC.objectIsInstance(actor) then
+        if (actor.id ~= self.id) and types.NPC.objectIsInstance(actor) and (types.Actor.isDead(actor) ~= true) and
+            (types.Actor.isDeathFinished(actor) ~= true) then
             local distance = (self.position - actor.position):length()
             if distance <= 400 then
                 local sneakResult = sneakCheck(actor, distance)
@@ -208,7 +188,6 @@ local function detectionCheck(dt)
                     sendSpottedEvent(actor)
                 end
             end
-
         end
     end
 end
@@ -281,7 +260,7 @@ local function onInfrequentUpdate(dt)
             newCellID = self.cell.id
         })
 
-        -- at this point, lastCellID is not correct.
+        -- at this point, lastCellID is not correct, because it is the current cell.
         lastCellID = self.cell.id
 
         -- reset per-cell state
@@ -314,7 +293,6 @@ infrequentMap:addCallback("onInfrequentUpdate", 0.1, onInfrequentUpdate)
 local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
-
 
 local lastNPCActivated = nil
 local function onNPCActivated(data)
@@ -369,8 +347,6 @@ end
 
 return {
     eventHandlers = {
-        [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
-        [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
         [settings.MOD_NAME .. "setItemsAllowed"] = setItemsAllowed,
         [settings.MOD_NAME .. "onNPCActivated"] = onNPCActivated,
         UiModeChanged = UiModeChanged

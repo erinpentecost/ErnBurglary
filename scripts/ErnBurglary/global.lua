@@ -255,7 +255,7 @@ local function onSpotted(data)
     local cellState = getCellState(data.cellID, data.player.id)
     cellState.spottedByActorId[data.npc.id] = true
     saveCellState(cellState)
-    interfaces.ErnBurglary.__onSpotted(data.player, data.npc)
+    interfaces.ErnBurglary.__onSpotted(data.player, data.npc, data.cellID)
 end
 
 -- params:
@@ -751,8 +751,10 @@ local function noWitnessCheck(dt)
             break
         end
         if anyPresent == false then
-            player:sendEvent(settings.MOD_NAME .. "showNoWitnessesMessage", {})
-            interfaces.ErnBurglary.__onNoWitnesses(player)
+            -- TODO: there's a big bug here.
+            -- this also needs to fire when we enter the new cell,
+            -- but before we get spotted by another NPC.
+            interfaces.ErnBurglary.__onNoWitnesses(player, player.cell.id)
         end
     end
 end
