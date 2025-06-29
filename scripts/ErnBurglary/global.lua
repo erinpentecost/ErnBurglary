@@ -255,7 +255,7 @@ local function onSpotted(data)
     local cellState = getCellState(data.cellID, data.player.id)
     cellState.spottedByActorId[data.npc.id] = true
     saveCellState(cellState)
-    interfaces.ErnBurglary.__onSpotted(data.player)
+    interfaces.ErnBurglary.__onSpotted(data.player, data.npc)
 end
 
 -- params:
@@ -266,8 +266,8 @@ local function onCellEnter(data)
 
     -- clean up new cell
     -- wow this cell state pattern is gross
-    local cellState = getCellState(data.cellID, data.player.id)
-    clearCellState(cellState)
+    --local cellState = getCellState(data.cellID, data.player.id)
+    --clearCellState(cellState)
 
     -- save bounty
     local cellState = getCellState(data.cellID, data.player.id)

@@ -15,23 +15,37 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]] local settings = require("scripts.ErnBurglary.settings")
+local aux_util = require('openmw_aux.util')
 
 if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
     return
 end
 
+local function isFunction(obj)
+    if type(obj) ~= "function" then
+        error("not a function: " .. aux_util.deepToString(obj, 3))
+        return false
+    end
+    return true
+end
+
 local coroutines = {}
 
-local function addCoroutine(c)
-    table.insert(coroutines, c)
+local function addCoroutine(callback, data, eventName)
+    isFunction(callback)
+    table.insert(coroutines, {
+        c = coroutine.wrap(callback, data),
+        event = eventName
+    })
 end
 
 local function onUpdate()
     -- Only run one callback per frame.
     if #coroutines > 0 then
         local c = table.remove(coroutines, 1)
-        coroutine.resume(c)
+        settings.debugPrint(tostring(c.event) .. ": " .. coroutine.status(c.c))
+        coroutine.resume(c.c)
     end
 end
 
@@ -44,18 +58,23 @@ local spottedPlayerStatus = {}
 -- - player
 -- - spotted (boolean)
 local function onSpottedChangeCallback(callback)
+    isFunction(callback)
     table.insert(onSpottedCallbacks, callback)
     settings.debugPrint("Registered callback #" .. #onSpottedCallbacks .. " for onSpottedChangeCallback().")
 end
 
-local function __onSpotted(player)
+local function __onSpotted(player, npc)
     if (spottedPlayerStatus[player.id] == true) then
         return
     end
     spottedPlayerStatus[player.id] = true
 
     for _, callback in ipairs(onSpottedCallbacks) do
-        addCoroutine(coroutine.wrap(callback, {player = player, spotted = true}))
+        addCoroutine(callback, {
+            player = player,
+            npc = npc,
+            spotted = true
+        }, "onSpottedCallback")
     end
 end
 
@@ -66,7 +85,10 @@ local function __onNoWitnesses(player)
     spottedPlayerStatus[player.id] = false
 
     for _, callback in ipairs(onSpottedCallbacks) do
-        addCoroutine(coroutine.wrap(callback, {player = player, spotted = false}))
+        addCoroutine(callback, {
+            player = player,
+            spotted = false
+        }, "onSpottedCallback")
     end
 end
 
@@ -83,13 +105,14 @@ local onStolenCallbacks = {}
 -- - cellID (cell the theft occurred in. might not be the player's current cell.)
 -- - caught (boolean indicating if the player was caught stealing it)
 local function onStolenCallback(callback)
+    isFunction(callback)
     table.insert(onStolenCallbacks, callback)
     settings.debugPrint("Registered callback #" .. #onStolenCallbacks .. " for onStolenCallback().")
 end
 
 local function __onStolen(data)
     for _, callback in ipairs(onStolenCallbacks) do
-        addCoroutine(coroutine.wrap(callback, data))
+        addCoroutine(callback, data, "onStolenCallback")
     end
 end
 
@@ -102,13 +125,14 @@ local onCellChangeCallbacks = {}
 -- - lastCellID
 -- - newCellID
 local function onCellChangeCallback(callback)
+    isFunction(callback)
     table.insert(onCellChangeCallbacks, callback)
     settings.debugPrint("Registered callback #" .. #onCellChangeCallbacks .. " for onCellChangeCallbacks().")
 end
 
 local function __onCellChange(data)
     for _, callback in ipairs(onCellChangeCallbacks) do
-        addCoroutine(coroutine.wrap(callback, data))
+        addCoroutine(callback, data, "onCellChange")
     end
 end
 
@@ -137,6 +161,6 @@ return {
         __onCellChange = __onCellChange
     },
     engineHandlers = {
-        onUpdate = onUpdate,
+        onUpdate = onUpdate
     }
 }
