@@ -687,6 +687,9 @@ local function onCellChange(data)
             cellID = data.lastCellID
         })
     end
+    
+    interfaces.ErnBurglary.__onNoWitnesses(data.player, data.newCellID)
+
     onCellEnter({
         player = data.player,
         cellID = data.newCellID
