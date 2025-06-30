@@ -32,18 +32,12 @@ interfaces.Settings.registerPage {
     description = "description"
 }
 
--- warnCooldown stops us from spamming people
-local warnCooldown = 15
-
 -- lastCellID will be nil if loading from a save game.
 -- otherwise, it will be the cell we just moved from.
 local lastCellID = nil
--- spottedByActorID deduplicates calls to onSpotted.
-local spottedByActorID = {}
+
 -- spotted is used cases where we were spotted before sneaking
-local spotted = false
 local sneaking = false
-local warnCooldownTimer = 0
 
 -- inDialogue is true while talking to an NPC.
 -- this is an attempt to get this working with Pause Control.
@@ -67,21 +61,6 @@ local function trackInventory()
     end
 end
 trackInventory()
-
-local function showWantedMessage(data)
-    settings.debugPrint("showWantedMessage")
-    ui.showMessage(localization("showWantedMessage", {
-        value = data.value
-    }))
-end
-
-local function showExpelledMessage(data)
-    settings.debugPrint("showExpelledMessage")
-    local faction = core.factions.records[data.faction]
-    ui.showMessage(localization("showExpelledMessage", {
-        factionName = data.faction.name
-    }))
-end
 
 local function elusiveness(distance)
     -- https://en.uesp.net/wiki/Morrowind:Sneak
@@ -155,13 +134,11 @@ local function registerHandlers()
     local sneakGroups = {"sneakforward", "sneakleft", "sneakright", "sneakback"}
     for _, group in ipairs(sneakGroups) do
         interfaces.AnimationController.addTextKeyHandler(group, function(group, key)
-            if (sneaking == false) and spotted and (warnCooldownTimer <= 0) then
-                -- just started sneaking, but was spotted earlier.
-                if settings.quietMode() ~= true then
-                    ui.showMessage(localization("showWarningMessage", {}))
-                end
-                warnCooldownTimer = warnCooldown
+
+            if sneaking == false then
+                self:sendEvent(settings.MOD_NAME .. "onSneakChange", true)
             end
+
             sneaking = true
         end)
     end
@@ -170,6 +147,11 @@ local function registerHandlers()
                             "runback"}
     for _, group in ipairs(nonSneakGroups) do
         interfaces.AnimationController.addTextKeyHandler(group, function(group, key)
+
+            if sneaking == true then
+                self:sendEvent(settings.MOD_NAME .. "onSneakChange", false)
+            end
+
             sneaking = false
         end)
     end
@@ -177,65 +159,28 @@ end
 
 registerHandlers()
 
-local function showNoWitnessesMessage(data)
-    if spotted == false then
-        return
-    end
-    spotted = false
-
-    settings.debugPrint("showNoWitnessesMessage")
-    spottedByActorID = {}
-    if (settings.quietMode() ~= true) and (warnCooldownTimer <= 0) then
-        warnCooldownTimer = warnCooldown
-        ui.showMessage(localization("showNoWitnessesMessage", {}))
-    end
-end
-
-local infrequentMap = infrequent.FunctionCollection:new()
-
 local function isTalking(actor)
-    if types.Actor.isDead(actor) or types.Actor.isDeathFinished(actor) then
-        return false
-    end
     return core.sound.isSayActive(actor)
 end
 
 local function sendSpottedEvent(npc)
-    if (spottedByActorID[npc.id] == true) then
-        return
-    end
 
     settings.debugPrint("sending spotted by event for " .. npc.recordId)
-
-    spottedByActorID[npc.id] = true
-    spotted = true
 
     core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
         player = self,
         npc = npc,
         cellID = self.cell.id
     })
-
-    -- Send notice if sneaking.
-    if sneaking and (warnCooldownTimer <= 0) then
-        warnCooldownTimer = warnCooldown
-        local npcName = types.NPC.record(npc).name
-        if settings.quietMode() ~= true then
-            ui.showMessage(localization("showSpottedMessage", {
-                actorName = npcName
-            }))
-        end
-    end
 end
 
 local function detectionCheck(dt)
 
-    warnCooldownTimer = warnCooldownTimer - dt
-
     -- find out which NPC is talking
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
-        if (spottedByActorID[actor.id] ~= true) and (actor.id ~= self.id) and types.NPC.objectIsInstance(actor) then
+        if (actor.id ~= self.id) and types.NPC.objectIsInstance(actor) and (types.Actor.isDead(actor) ~= true) and
+            (types.Actor.isDeathFinished(actor) ~= true) then
             local distance = (self.position - actor.position):length()
             if distance <= 400 then
                 local sneakResult = sneakCheck(actor, distance)
@@ -243,12 +188,9 @@ local function detectionCheck(dt)
                     sendSpottedEvent(actor)
                 end
             end
-
         end
     end
 end
-
-infrequentMap:addCallback("detection", 0.2, detectionCheck)
 
 local function inventoryChangeCheck(dt)
     local newItemsList = {}
@@ -294,43 +236,21 @@ local function inventoryChangeCheck(dt)
         end
         core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
             player = self,
-            cellID = self.cell.id,
+            cellID = lastCellID,
             itemsList = newItemsList
         })
     end
 end
 
-infrequentMap:addCallback("inventory", 0.1, inventoryChangeCheck)
-
-local function updateSpottedSpell()
-    if spotted then
-        types.Actor.activeSpells(self):add({
-            id = "ernburglary_spotted",
-            effects = {0},
-            ignoreResistances = true,
-            ignoreSpellAbsorption = true,
-            ignoreReflect = true
-        })
-    else
-        for _, spell in pairs(types.Actor.activeSpells(self)) do
-            if spell.id == "ernburglary_spotted" then
-                types.Actor.activeSpells(self):remove(spell.activeSpellId)
-            end
-        end
-    end
-end
-
-infrequentMap:addCallback("spottedSpell", 0.8, updateSpottedSpell)
-
 local bounty = 0
 
-local function onUpdate(dt)
+local function onInfrequentUpdate(dt)
     -- this is not called when the game is paused.
+
+    inventoryChangeCheck(dt)
+
     if lastCellID ~= self.cell.id then
         settings.debugPrint("cell changed from " .. tostring(lastCellID) .. " to " .. self.cell.id)
-
-        -- run all checks since we don't want to lose info
-        infrequentMap:callAll()
 
         -- now process cell change
 
@@ -340,24 +260,21 @@ local function onUpdate(dt)
             newCellID = self.cell.id
         })
 
+        -- at this point, lastCellID is not correct, because it is the current cell.
         lastCellID = self.cell.id
 
         -- reset per-cell state
-        spottedByActorID = {}
-        spotted = false
-        warnCooldownTimer = 0
         trackInventory()
 
         return
     end
 
+    detectionCheck(dt)
+
     local newBounty = types.Player.getCrimeLevel(self)
     if bounty < newBounty then
         settings.debugPrint("detected bounty increase")
         -- we got caught!
-        -- run all checks since we don't want to lose info.
-        infrequentMap:callAll()
-
         -- notify global that we got caught.
         -- this will immediately check for pending thefts
         core.sendGlobalEvent(settings.MOD_NAME .. "onBountyIncreased", {
@@ -367,10 +284,13 @@ local function onUpdate(dt)
         })
 
         bounty = newBounty
-        return
     end
+end
 
-    -- run periodically
+local infrequentMap = infrequent.FunctionCollection:new()
+infrequentMap:addCallback("onInfrequentUpdate", 0.1, onInfrequentUpdate)
+
+local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
 
@@ -427,9 +347,6 @@ end
 
 return {
     eventHandlers = {
-        [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
-        [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
-        [settings.MOD_NAME .. "showNoWitnessesMessage"] = showNoWitnessesMessage,
         [settings.MOD_NAME .. "setItemsAllowed"] = setItemsAllowed,
         [settings.MOD_NAME .. "onNPCActivated"] = onNPCActivated,
         UiModeChanged = UiModeChanged
