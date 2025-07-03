@@ -85,6 +85,21 @@ local function elusiveness(distance)
     return elusivenessScore
 end
 
+local function directionMult(actor)
+    -- 1.5 if on either side or in front
+    -- 0.5 if behind
+
+    -- dot product returns 0 if at 90*, 1 if codirectional, -1 if opposite.
+
+    -- so, take (dot product)/2 + 1
+
+    local facing = actor.rotation:apply(util.vector3(0.0, 1.0 ,0.0)):normalize()
+    local relativePos = (self.position - actor.position):normalize()
+    local mult = 1 + facing:dot(relativePos)/2
+    --settings.debugPrint("directionMult for " .. actor.recordId .. ": "..tostring(mult))
+    return mult
+end
+
 local function awareness(actor)
     -- https://en.uesp.net/wiki/Morrowind:Sneak
     local sneakTerm = types.NPC.stats.skills.sneak(actor).modified
@@ -94,16 +109,13 @@ local function awareness(actor)
     local fatigueStat = types.Actor.stats.dynamic.fatigue(self)
     local fatigueTerm = 0.75 + (0.5 * math.min(1, math.max(0, fatigueStat.current / fatigueStat.base)))
 
-    -- this can range from 1.5 to 0.5. just assume 1.0 for now.
-    local directionMult = 1.0
-
     local blindEffect = types.Actor.activeEffects(actor):getEffect(core.magic.EFFECT_TYPE.Blind)
     local blind = 0
     if blindEffect ~= nil then
         blind = blindEffect.magnitude
     end
 
-    local awarenessScore = (sneakTerm + agilityTerm + luckTerm - blind) * fatigueTerm * directionMult
+    local awarenessScore = (sneakTerm + agilityTerm + luckTerm - blind) * fatigueTerm * directionMult(actor)
     -- settings.debugPrint("awareness: " .. awarenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
     --                        luckTerm .. "-" .. blind .. ") * " .. fatigueTerm .. " * " .. directionMult)
     return awarenessScore
@@ -184,8 +196,8 @@ local function LOS(player, actor)
         collisionType = nearby.COLLISION_TYPE.AnyPhysical,
         ignore = actor
     })
-    settings.debugPrint("raycast(center, "..tostring(actorCenter)..") from " .. actor.recordId .. " hit" ..
-                            aux_util.deepToString(castResult.hitObject, 4))
+    --settings.debugPrint("raycast(center, "..tostring(actorCenter)..") from " .. actor.recordId .. " hit" ..
+    --                        aux_util.deepToString(castResult.hitObject, 4))
 
     if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
         return true
@@ -200,8 +212,8 @@ local function LOS(player, actor)
         collisionType = nearby.COLLISION_TYPE.AnyPhysical,
         ignore = actor
     })
-    settings.debugPrint("raycast(head, "..tostring(actorHead)..") from " .. actor.recordId .. " hit" ..
-                            aux_util.deepToString(castResult.hitObject, 4))
+    --settings.debugPrint("raycast(head, "..tostring(actorHead)..") from " .. actor.recordId .. " hit" ..
+    --                        aux_util.deepToString(castResult.hitObject, 4))
 
     if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
         return true
