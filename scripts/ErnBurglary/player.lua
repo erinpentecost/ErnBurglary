@@ -176,6 +176,7 @@ local function sendSpottedEvent(npc)
 end
 
 local function LOS(player, actor)
+    -- cast once from center of box to center of box
     local playerCenter = player:getBoundingBox().center
     local actorCenter = actor:getBoundingBox().center
 
@@ -183,20 +184,23 @@ local function LOS(player, actor)
         collisionType = nearby.COLLISION_TYPE.AnyPhysical,
         ignore = actor
     })
-    settings.debugPrint("raycast(center) from " .. actor.recordId .. " hit" ..
+    settings.debugPrint("raycast(center, "..tostring(actorCenter)..") from " .. actor.recordId .. " hit" ..
                             aux_util.deepToString(castResult.hitObject, 4))
 
     if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
         return true
     end
 
+    -- and one more check from top of one box to near-center of other.
+    -- this exists so merchants can spot you behind counters.
     local actorHead = actor:getBoundingBox().center + util.vector3(0,0, actor:getBoundingBox().halfSize.z)
+    local playerChest = player:getBoundingBox().center + util.vector3(0,0, (player:getBoundingBox().halfSize.z)/2)
 
-    local castResult = nearby.castRay(actorHead, playerCenter, {
+    local castResult = nearby.castRay(actorHead, playerChest, {
         collisionType = nearby.COLLISION_TYPE.AnyPhysical,
         ignore = actor
     })
-    settings.debugPrint("raycast(head) from " .. actor.recordId .. " hit" ..
+    settings.debugPrint("raycast(head, "..tostring(actorHead)..") from " .. actor.recordId .. " hit" ..
                             aux_util.deepToString(castResult.hitObject, 4))
 
     if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
