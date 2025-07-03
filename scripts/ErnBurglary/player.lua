@@ -21,6 +21,7 @@ local types = require("openmw.types")
 local nearby = require("openmw.nearby")
 local core = require("openmw.core")
 local self = require("openmw.self")
+local util = require("openmw.util")
 local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
 local aux_util = require('openmw_aux.util')
@@ -174,6 +175,37 @@ local function sendSpottedEvent(npc)
     })
 end
 
+local function LOS(player, actor)
+    local playerCenter = player:getBoundingBox().center
+    local actorCenter = actor:getBoundingBox().center
+
+    local castResult = nearby.castRay(actorCenter, playerCenter, {
+        collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+        ignore = actor
+    })
+    settings.debugPrint("raycast(center) from " .. actor.recordId .. " hit" ..
+                            aux_util.deepToString(castResult.hitObject, 4))
+
+    if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
+        return true
+    end
+
+    local actorHead = actor:getBoundingBox().center + util.vector3(0,0, actor:getBoundingBox().halfSize.z)
+
+    local castResult = nearby.castRay(actorHead, playerCenter, {
+        collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+        ignore = actor
+    })
+    settings.debugPrint("raycast(head) from " .. actor.recordId .. " hit" ..
+                            aux_util.deepToString(castResult.hitObject, 4))
+
+    if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
+        return true
+    end
+
+    return false
+end
+
 local function detectionCheck(dt)
 
     -- find out which NPC is talking
@@ -184,8 +216,11 @@ local function detectionCheck(dt)
             local distance = (self.position - actor.position):length()
             if distance <= 400 then
                 local sneakResult = sneakCheck(actor, distance)
-                if (isTalking(actor) or (distance <= 70)) and (sneakResult ~= true) then
-                    sendSpottedEvent(actor)
+                if (isTalking(actor) or (distance <= 100)) and (sneakResult ~= true) then
+                    -- do a raycast to check if we have line of sight
+                    if LOS(self, actor) then
+                        sendSpottedEvent(actor)
+                    end
                 end
             end
         end
