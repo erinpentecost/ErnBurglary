@@ -21,6 +21,7 @@ local types = require("openmw.types")
 local nearby = require("openmw.nearby")
 local core = require("openmw.core")
 local self = require("openmw.self")
+local util = require("openmw.util")
 local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
 local aux_util = require('openmw_aux.util')
@@ -84,6 +85,21 @@ local function elusiveness(distance)
     return elusivenessScore
 end
 
+local function directionMult(actor)
+    -- 1.5 if on either side or in front
+    -- 0.5 if behind
+
+    -- dot product returns 0 if at 90*, 1 if codirectional, -1 if opposite.
+
+    -- so, take (dot product)/2 + 1
+
+    local facing = actor.rotation:apply(util.vector3(0.0, 1.0 ,0.0)):normalize()
+    local relativePos = (self.position - actor.position):normalize()
+    local mult = 1 + facing:dot(relativePos)/2
+    --settings.debugPrint("directionMult for " .. actor.recordId .. ": "..tostring(mult))
+    return mult
+end
+
 local function awareness(actor)
     -- https://en.uesp.net/wiki/Morrowind:Sneak
     local sneakTerm = types.NPC.stats.skills.sneak(actor).modified
@@ -93,16 +109,13 @@ local function awareness(actor)
     local fatigueStat = types.Actor.stats.dynamic.fatigue(self)
     local fatigueTerm = 0.75 + (0.5 * math.min(1, math.max(0, fatigueStat.current / fatigueStat.base)))
 
-    -- this can range from 1.5 to 0.5. just assume 1.0 for now.
-    local directionMult = 1.0
-
     local blindEffect = types.Actor.activeEffects(actor):getEffect(core.magic.EFFECT_TYPE.Blind)
     local blind = 0
     if blindEffect ~= nil then
         blind = blindEffect.magnitude
     end
 
-    local awarenessScore = (sneakTerm + agilityTerm + luckTerm - blind) * fatigueTerm * directionMult
+    local awarenessScore = (sneakTerm + agilityTerm + luckTerm - blind) * fatigueTerm * directionMult(actor)
     -- settings.debugPrint("awareness: " .. awarenessScore .. " = " .. "(" .. sneakTerm .. "+" .. agilityTerm .. "+" ..
     --                        luckTerm .. "-" .. blind .. ") * " .. fatigueTerm .. " * " .. directionMult)
     return awarenessScore
@@ -174,6 +187,41 @@ local function sendSpottedEvent(npc)
     })
 end
 
+local function LOS(player, actor)
+    -- cast once from center of box to center of box
+    local playerCenter = player:getBoundingBox().center
+    local actorCenter = actor:getBoundingBox().center
+
+    local castResult = nearby.castRay(actorCenter, playerCenter, {
+        collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+        ignore = actor
+    })
+    --settings.debugPrint("raycast(center, "..tostring(actorCenter)..") from " .. actor.recordId .. " hit" ..
+    --                        aux_util.deepToString(castResult.hitObject, 4))
+
+    if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
+        return true
+    end
+
+    -- and one more check from top of one box to near-center of other.
+    -- this exists so merchants can spot you behind counters.
+    local actorHead = actor:getBoundingBox().center + util.vector3(0,0, actor:getBoundingBox().halfSize.z)
+    local playerChest = player:getBoundingBox().center + util.vector3(0,0, (player:getBoundingBox().halfSize.z)/2)
+
+    local castResult = nearby.castRay(actorHead, playerChest, {
+        collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+        ignore = actor
+    })
+    --settings.debugPrint("raycast(head, "..tostring(actorHead)..") from " .. actor.recordId .. " hit" ..
+    --                        aux_util.deepToString(castResult.hitObject, 4))
+
+    if (castResult.hitObject ~= nil) and (castResult.hitObject.id == player.id) then
+        return true
+    end
+
+    return false
+end
+
 local function detectionCheck(dt)
 
     -- find out which NPC is talking
@@ -184,8 +232,11 @@ local function detectionCheck(dt)
             local distance = (self.position - actor.position):length()
             if distance <= 400 then
                 local sneakResult = sneakCheck(actor, distance)
-                if (isTalking(actor) or (distance <= 70)) and (sneakResult ~= true) then
-                    sendSpottedEvent(actor)
+                if (isTalking(actor) or (distance <= 100)) and (sneakResult ~= true) then
+                    -- do a raycast to check if we have line of sight
+                    if LOS(self, actor) then
+                        sendSpottedEvent(actor)
+                    end
                 end
             end
         end

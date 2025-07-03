@@ -99,7 +99,7 @@ local function onActivate(object, actor)
         -- don't mess with non-teleport doors.
         local destCell = types.Door.destCell(object)
         if (types.Door.isTeleport(object) == false) or (destCell == nil) or
-            (destCell.id == actor.cell.id) or (destCell.isExterior) then
+            (destCell.id == actor.cell.id) or (destCell.isExterior) or (destCell:hasTag("QuasiExterior")) then
                 settings.debugPrint("door doesn't teleport into an interior")
                 return
         end
