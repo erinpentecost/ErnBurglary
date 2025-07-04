@@ -70,10 +70,23 @@ end
 
 local function setIsTrespassing(actor, destCell)
     -- we are trespassing!
-    settings.debugPrint("Player " .. actor.id .. " is trespassing in " .. destCell.name .. " (" ..
-    destCell.id .. ").")
+    settings.debugPrint("Player " .. actor.id .. " is trespassing in " .. destCell.name .. " (" .. destCell.id .. ").")
     persistedState[actor.id] = destCell.id
     actor:sendEvent(settings.MOD_NAME .. "showTrespassingMessage", {})
+end
+
+local function cellHasOwnedItems(cell)
+    for _, obj in ipairs(cell:getAll()) do
+        if types.Container.objectIsInstance(obj) or types.Item.objectIsInstance(obj) then
+            local owner = common.serializeOwner(obj.owner)
+            if owner ~= nil then
+                settings.debugPrint("Cell " .. cell.id .. " has an object owned by " ..
+                                        aux_util.deepToString(owner, 2))
+                return true
+            end
+        end
+    end
+    return false
 end
 
 local function onActivate(object, actor)
@@ -83,7 +96,7 @@ local function onActivate(object, actor)
     end
 
     if types.Door.objectIsInstance(object) then
-        settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player): "..aux_util.deepToString(object, 3))
+        settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player): " .. aux_util.deepToString(object, 3))
         if types.Door.isOpen(object) then
             -- this means we are closing the door.
             settings.debugPrint("door is open")
@@ -98,10 +111,10 @@ local function onActivate(object, actor)
 
         -- don't mess with non-teleport doors.
         local destCell = types.Door.destCell(object)
-        if (types.Door.isTeleport(object) == false) or (destCell == nil) or
-            (destCell.id == actor.cell.id) or (destCell.isExterior) or (destCell:hasTag("QuasiExterior")) then
-                settings.debugPrint("door doesn't teleport into an interior")
-                return
+        if (types.Door.isTeleport(object) == false) or (destCell == nil) or (destCell.id == actor.cell.id) or
+            (destCell.isExterior) or (destCell:hasTag("QuasiExterior")) then
+            settings.debugPrint("door doesn't teleport into an interior")
+            return
         end
 
         -- locked doors won't teleport us on activate
@@ -110,23 +123,30 @@ local function onActivate(object, actor)
             return
         end
 
+        -- If the door is owned, then we are always considered trespassing.
+        if object.owner ~= nil then
+            if object.owner.recordId ~= nil then
+                settings.debugPrint("door is owned by " .. object.owner.recordId)
+                setIsTrespassing(actor, destCell)
+                return
+            elseif (object.owner.factionId ~= nil) and
+                (common.atLeastRank(actor, object.owner.factionId, object.owner.factionRank) == false) then
+                settings.debugPrint("door is owned by " .. object.owner.factionId)
+                setIsTrespassing(actor, destCell)
+                return
+            end
+        end
+
+        -- If the door has a key, we *might* be trespassing.
+        -- Only consider us trespassing if we don't have the key,
+        -- and if there is an owned item in the target cell.
+        -- I check for owned items in order to exclude dungeons.
         local keyRecord = types.Lockable.getKeyRecord(object)
         if keyRecord ~= nil then
             settings.debugPrint("door has a key")
-            -- door has a key, so check if we have it.
-            if hasKey(object, actor) ~= true then
+            if (hasKey(object, actor) ~= true) and (cellHasOwnedItems(destCell)) then
                 setIsTrespassing(actor, destCell)
-            end
-            return
-        end
-
-        if object.owner ~= nil then
-            if object.owner.recordId ~= nil then
-                settings.debugPrint("door is owned by "..object.owner.recordId)
-                setIsTrespassing(actor, destCell)
-            elseif (object.owner.factionId ~= nil) and (common.atLeastRank(actor, object.owner.factionId, object.owner.factionRank) == false) then
-                settings.debugPrint("door is owned by "..object.owner.factionId)
-                setIsTrespassing(actor, destCell)
+                return
             end
         end
     end
