@@ -4,6 +4,12 @@ description: "Make burglary not so easy by giving NPCs memories better than gold
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
 
+modSettingsGameplayTitle: "Gameplay Options"
+modSettingsGameplayDesc: "Change how gameplay mechanics work."
+
+modSettingsUITitle: "Interface Options"
+modSettingsUIDesc: "Change how user interface features work."
+
 revertBounties_name: "Revert Bounty If No Witnesses"
 revertBounties_description: "This is a from-scratch re-implementation of the excellent 'No Witness No Bounty' mod. If all witnesses are dead before you leave the area, then your bounty will be reverted."
 

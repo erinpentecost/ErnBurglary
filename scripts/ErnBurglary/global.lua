@@ -32,7 +32,7 @@ end
 settings.initSettings()
 
 local function onNewGame()
-    settings.settingsStore:set("trespassFine", 10)
+    settings.onNewGame()
 end
 
 local persistedState = {}

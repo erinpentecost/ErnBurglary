@@ -20,30 +20,31 @@ local types = require("openmw.types")
 
 local MOD_NAME = "ErnBurglary"
 
-local settingsStore = storage.globalSection("SettingsGlobal" .. MOD_NAME)
+local SettingsGameplay = storage.globalSection("SettingsGameplay" .. MOD_NAME)
+local SettingsUI = storage.globalSection("SettingsUI" .. MOD_NAME)
 
 local function debugMode()
-    return settingsStore:get("debugMode")
+    return SettingsUI:get("debugMode")
 end
 
 local function revertBounties()
-    return settingsStore:get("revertBounties")
+    return SettingsGameplay:get("revertBounties")
 end
 
 local function quietMode()
-    return settingsStore:get("quietMode")
+    return SettingsUI:get("quietMode")
 end
 
 local function bountyScale()
-    return settingsStore:get("bountyScale")
+    return SettingsGameplay:get("bountyScale")
 end
 
 local function trespassFine()
-    return settingsStore:get("trespassFine")
+    return SettingsGameplay:get("trespassFine")
 end
 
 local function lenientFactions()
-    return settingsStore:get("lenientFactions")
+    return SettingsGameplay:get("lenientFactions")
 end
 
 local function debugPrint(str, ...)
@@ -57,12 +58,21 @@ local function debugPrint(str, ...)
     end
 end
 
+local function registerPage()
+    interfaces.Settings.registerPage {
+        key = MOD_NAME,
+        l10n = MOD_NAME,
+        name = "name",
+        description = "description"
+    }
+end
+
 local function initSettings()
     interfaces.Settings.registerGroup {
-        key = "SettingsGlobal" .. MOD_NAME,
+        key = "SettingsGameplay" .. MOD_NAME,
         l10n = MOD_NAME,
-        name = "modSettingsTitle",
-        description = "modSettingsDesc",
+        name = "modSettingsGameplayTitle",
+        description = "modSettingsGameplayDesc",
         page = MOD_NAME,
         permanentStorage = false,
         settings = {{
@@ -94,15 +104,25 @@ local function initSettings()
             default = true,
             renderer = "checkbox"
         }, {
-            key = "quietMode",
-            name = "quietMode_name",
-            description = "quietMode_description",
-            default = true,
-            renderer = "checkbox"
-        }, {
             key = "lenientFactions",
             name = "lenientFactions_name",
             description = "lenientFactions_description",
+            default = true,
+            renderer = "checkbox"
+        }}
+    }
+
+    interfaces.Settings.registerGroup {
+        key = "SettingsUI" .. MOD_NAME,
+        l10n = MOD_NAME,
+        name = "modSettingsUITitle",
+        description = "modSettingsUIDesc",
+        page = MOD_NAME,
+        permanentStorage = false,
+        settings = {{
+            key = "quietMode",
+            name = "quietMode_name",
+            description = "quietMode_description",
             default = true,
             renderer = "checkbox"
         }, {
@@ -113,12 +133,18 @@ local function initSettings()
             renderer = "checkbox"
         }}
     }
+
     print("init settings")
+end
+
+local function onNewGame()
+    SettingsGameplay:set("trespassFine", 10)
 end
 
 return {
     initSettings = initSettings,
-    settingsStore = settingsStore,
+    onNewGame = onNewGame,
+    registerPage = registerPage,
     MOD_NAME = MOD_NAME,
 
     revertBounties = revertBounties,
