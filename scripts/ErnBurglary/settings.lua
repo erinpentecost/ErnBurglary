@@ -47,6 +47,15 @@ local function lenientFactions()
     return SettingsGameplay:get("lenientFactions")
 end
 
+local function icon()
+    return {
+        ["showIcon"] = SettingsUI:get("showIcon"),
+        ["iconOffsetX"] = SettingsUI:get("iconOffsetX"),
+        ["iconOffsetY"] = SettingsUI:get("iconOffsetY"),
+        ["iconSize"] = SettingsUI:get("iconSize")
+    }
+end
+
 local function debugPrint(str, ...)
     if debugMode() then
         local arg = {...}
@@ -65,6 +74,18 @@ local function registerPage()
         name = "name",
         description = "description"
     }
+end
+
+local function onUISettingsChange(fn)
+    local async = require("openmw.async")
+    local ui = require('openmw.ui')
+
+    local group = storage.globalSection("SettingsUI" .. MOD_NAME)
+    group:subscribe(async:callback(function(_, key)
+        debugPrint("Reloading UI...")
+        fn()
+        ui.updateAll()
+    end))
 end
 
 local function initSettings()
@@ -126,6 +147,42 @@ local function initSettings()
             default = true,
             renderer = "checkbox"
         }, {
+            key = "showIcon",
+            name = "showIcon_name",
+            description = "showIcon_description",
+            default = true,
+            renderer = "checkbox"
+        }, {
+            key = "iconOffsetX",
+            name = "iconOffsetX_name",
+            default = 0,
+            renderer = "number",
+            argument = {
+                integer = true,
+                min = -50000,
+                max = 50000
+            }
+        }, {
+            key = "iconOffsetY",
+            name = "iconOffsetY_name",
+            default = 0,
+            renderer = "number",
+            argument = {
+                integer = true,
+                min = -50000,
+                max = 50000
+            }
+        }, {
+            key = "iconSize",
+            name = "iconSize_name",
+            default = 32,
+            renderer = "number",
+            argument = {
+                integer = true,
+                min = 8,
+                max = 256
+            }
+        }, {
             key = "debugMode",
             name = "debugMode_name",
             description = "debugMode_description",
@@ -143,15 +200,19 @@ end
 
 return {
     initSettings = initSettings,
-    onNewGame = onNewGame,
-    registerPage = registerPage,
     MOD_NAME = MOD_NAME,
 
+    registerPage = registerPage,
+    onUISettingsChange = onUISettingsChange,
+    onNewGame = onNewGame,
+
     revertBounties = revertBounties,
-    quietMode = quietMode,
     bountyScale = bountyScale,
     trespassFine = trespassFine,
     lenientFactions = lenientFactions,
+
+    quietMode = quietMode,
+    icon=icon,
     debugMode = debugMode,
     debugPrint = debugPrint
 }
