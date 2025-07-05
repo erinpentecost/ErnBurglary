@@ -67,14 +67,12 @@ local function makeIcon(path)
         props = {
             resource = ui.texture {
                 path = path,
-                --offset = util.vector2(0, 0),
-                --size = util.vector2(size, size)
             },
             position = util.vector2(iconSettings["iconOffsetX"] + 202, iconSettings["iconOffsetY"] - 20),
             relativePosition = util.vector2(0, 1),
-            --relativeSize = util.vector2(0.1, 0.1),
             size             = util.vector2(size,size),
             anchor = util.vector2(0, 1),
+            color = util.color.hex("f8a102"),
 
             visible = false,
         },
@@ -85,6 +83,7 @@ end
 local function drawSpottedIcon()
     if spottedIcon == nil then
         local iconPath = core.magic.effects.records[core.magic.EFFECT_TYPE.Blind].icon
+        --local iconPath = core.stats.Skill.records["sneak"].icon
         settings.debugPrint("iconpath: "..iconPath)
         spottedIcon = makeIcon(iconPath)
     end

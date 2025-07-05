@@ -22,14 +22,16 @@ If you get Spotted while trespassing, you'll incur a 10 gold fine (configurable)
 So long as you've used the key on the door once, you will be allowed in the area through that door from then on. You don't have to keep the key forever.
 
 ## Indicators
-- While you're spotted in the area, a 5pt Drain Sneak effect is applied. This is removed as soon as you're no longer spotted.
+While you're spotted in the area, a 5pt Drain Sneak effect is applied. This is removed as soon as you're no longer spotted.
+
+You can configure a Spotted icon that will appear in your HUD while you are Spotted and sneaking.
+
+These alerts will show up (they can all be disabled except the last one):
 - If you enter an area and are trespassing, you'll get an alert.
 - When you enter sneak mode, you'll get an alert if you were previously spotted.
 - If you're spotted while in sneak mode, you'll also get an alert.
 - If all the witnesses die, you'll get another alert.
 - If you get caught when you leave, you'll get an alert.
-
-You can optionally turn off all the alerts except the last one.
 
 ## How it Works
 If you're near an NPC and they say something, the mod checks if you are sneaking. If you are sneaking, the mod reproduces the same vanilla game logic for sneak detection. If you fail that check, then the NPC is marked as having spotted you. If you're super close to the NPC, they don't have to say anything.
