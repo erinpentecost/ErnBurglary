@@ -4,6 +4,12 @@ description: "Make burglary not so easy by giving NPCs memories better than gold
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
 
+modSettingsGameplayTitle: "Gameplay Options"
+modSettingsGameplayDesc: "Change how gameplay mechanics work."
+
+modSettingsUITitle: "Interface Options"
+modSettingsUIDesc: "Change how user interface features work."
+
 revertBounties_name: "Revert Bounty If No Witnesses"
 revertBounties_description: "This is a from-scratch re-implementation of the excellent 'No Witness No Bounty' mod. If all witnesses are dead before you leave the area, then your bounty will be reverted."
 
@@ -18,6 +24,12 @@ trespassFine_description: "Penalty for being caught trespassing. Set to 0 to dis
 
 lenientFactions_name: "Lenient Factions"
 lenientFactions_description: "Faction reputation won't drop and you won't get expelled if you're caught after-the-fact. You'll still accrue a bounty."
+
+showIcon_name: "Show Icon"
+showIcon_description: "Show Spotted and Trespassing icons while sneaking."
+iconOffsetY_name: "Icon Vertical Offset"
+iconOffsetX_name: "Icon Horizontal Offset"
+iconSize_name: "Icon Image Size"
 
 debugMode_name: "Debug Mode"
 debugMode_description: "Print debug messages."

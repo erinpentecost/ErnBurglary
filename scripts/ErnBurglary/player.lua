@@ -26,12 +26,7 @@ local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
 local aux_util = require('openmw_aux.util')
 
-interfaces.Settings.registerPage {
-    key = settings.MOD_NAME,
-    l10n = settings.MOD_NAME,
-    name = "name",
-    description = "description"
-}
+settings.registerPage()
 
 -- lastCellID will be nil if loading from a save game.
 -- otherwise, it will be the cell we just moved from.
