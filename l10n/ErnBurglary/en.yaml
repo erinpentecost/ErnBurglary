@@ -26,7 +26,12 @@ lenientFactions_name: "Lenient Factions"
 lenientFactions_description: "Faction reputation won't drop and you won't get expelled if you're caught after-the-fact. You'll still accrue a bounty."
 
 showIcon_name: "Show Icon"
-showIcon_description: "Show Spotted and Trespassing icons while sneaking."
+showIcon_description: "Show Spotted icon under the selected condition."
+sneaking: "sneaking"
+never: "never   "
+always: "always  "
+
+
 iconOffsetY_name: "Icon Vertical Offset"
 iconOffsetX_name: "Icon Horizontal Offset"
 iconSize_name: "Icon Image Size"
