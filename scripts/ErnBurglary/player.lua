@@ -280,9 +280,16 @@ local function inventoryChangeCheck(dt)
             settings.debugPrint("forgave new items")
             return
         end
+
+        -- lastCellID might not be set yet, so use current cell as a backup.
+        local itemCell = lastCellID
+        if itemCell == nil or itemCell == "" then
+            itemCell = self.cell.id
+        end
+        
         core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
             player = self,
-            cellID = lastCellID,
+            cellID = itemCell,
             itemsList = newItemsList
         })
     end
@@ -347,7 +354,8 @@ local function onNPCActivated(data)
 end
 
 local function UiModeChanged(data)
-    if data.newMode == "Dialogue" then
+    settings.debugPrint("ui changed: "..aux_util.deepToString(data, 2))
+    if data.newMode == "Dialogue" or data.newMode == "Companion" then
         settings.debugPrint("in dialogue")
         if lastNPCActivated ~= nil then
             settings.debugPrint("talking with " .. lastNPCActivated.recordId .. ", they spot us for free")
@@ -361,7 +369,7 @@ local function UiModeChanged(data)
         bounty = types.Player.getCrimeLevel(self)
 
         lastNPCActivated = nil
-    elseif data.oldMode == "Dialogue" then
+    elseif data.oldMode == "Dialogue" or data.oldMode == "Companion" then
         settings.debugPrint("was in dialogue")
         inDialogue = false
         -- ensure we skip the NEXT item check.

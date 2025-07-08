@@ -47,6 +47,8 @@ local function lenientFactions()
     return SettingsGameplay:get("lenientFactions")
 end
 
+local iconOptions = {"sneaking", "never", "always"}
+
 local function icon()
     return {
         ["showIcon"] = SettingsUI:get("showIcon"),
@@ -150,8 +152,11 @@ local function initSettings()
             key = "showIcon",
             name = "showIcon_name",
             description = "showIcon_description",
-            default = true,
-            renderer = "checkbox"
+            argument = {items = iconOptions, l10n = MOD_NAME},
+            default = iconOptions[1],
+            renderer = "select",
+            --default = true,
+            --renderer = "checkbox"
         }, {
             key = "iconOffsetX",
             name = "iconOffsetX_name",

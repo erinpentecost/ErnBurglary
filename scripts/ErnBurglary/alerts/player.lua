@@ -24,6 +24,7 @@ local async = require("openmw.async")
 local ui = require('openmw.ui')
 local util = require('openmw.util')
 local aux_util = require('openmw_aux.util')
+local aux_ui = require('openmw_aux.ui')
 
 -- blind is an open eye, night eye is an open eye in partial shadow
 
@@ -56,38 +57,46 @@ local spottedIcon = nil
 
 local function makeIcon(path)
     local iconSettings = settings.icon()
-    settings.debugPrint("icon settings: "..aux_util.deepToString(iconSettings, 3))
+    settings.debugPrint("icon settings: " .. aux_util.deepToString(iconSettings, 3))
     local size = iconSettings["iconSize"]
     -- (0,0) is top left of screen.
 
     -- default anchor is top-left. 1,0 is top right.
-    return ui.create {
-        layer = "HUD",
-        type = ui.TYPE.Image,
+    local box = ui.create {
+        name = 'spotted',
+        layer = 'HUD',
+        type = ui.TYPE.Container,
+        template = interfaces.MWUI.templates.boxSolid,
         props = {
-            resource = ui.texture {
-                path = path,
-            },
-            position = util.vector2(iconSettings["iconOffsetX"] + 202, iconSettings["iconOffsetY"] - 20),
+            position = util.vector2(iconSettings["iconOffsetX"] + 202, iconSettings["iconOffsetY"] - 18),
             relativePosition = util.vector2(0, 1),
-            size             = util.vector2(size,size),
             anchor = util.vector2(0, 1),
-            color = util.color.hex("f8a102"),
-
-            visible = false,
+            visible = false
         },
-        size             = util.vector2(size,size),
+        content = ui.content {{
+            type = ui.TYPE.Image,
+            props = {
+                resource = ui.texture {
+                    path = path
+                },
+                color = util.color.hex("f8a102"),
+                size = util.vector2(size, size)
+            },
+            size = util.vector2(size, size)
+        }}
     }
+    return box
 end
 
 local function drawSpottedIcon()
     if spottedIcon == nil then
         local iconPath = core.magic.effects.records[core.magic.EFFECT_TYPE.Blind].icon
-        --local iconPath = core.stats.Skill.records["sneak"].icon
-        settings.debugPrint("iconpath: "..iconPath)
+        -- local iconPath = core.stats.Skill.records["sneak"].icon
+        settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
-    if sneaking and spotted and settings.icon()["showIcon"] and interfaces.UI.isHudVisible() then
+    if (spotted and interfaces.UI.isHudVisible()) and
+        ((settings.icon()["showIcon"] == "always") or (sneaking and settings.icon()["showIcon"] ~= "never")) then
         settings.debugPrint("Spotted Icon: revealing")
         spottedIcon.layout.props.visible = true
         spottedIcon:update()
@@ -168,8 +177,6 @@ local function showExpelledMessage(data)
         factionName = data.faction.name
     }))
 end
-
-
 
 local function onUpdate(dt)
     if pendingMessage == nil then
