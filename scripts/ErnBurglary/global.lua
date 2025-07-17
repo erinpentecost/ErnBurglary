@@ -21,6 +21,7 @@ local interfaces = require('openmw.interfaces')
 local world = require('openmw.world')
 local types = require("openmw.types")
 local core = require("openmw.core")
+local async = require('openmw.async')
 local aux_util = require('openmw_aux.util')
 local storage = require('openmw.storage')
 
@@ -36,18 +37,6 @@ local function onNewGame()
 end
 
 local persistedState = {}
-
-local function saveState()
-    return persistedState
-end
-
-local function loadState(saved)
-    if saved == nil then
-        persistedState = {}
-    else
-        persistedState = saved
-    end
-end
 
 local function thieveryKey(cellID, playerID)
     if (cellID == nil) or (cellID == "") then
@@ -218,7 +207,7 @@ local function onActivate(object, actor)
         -- If we are picking up an item off a shelf, check to see if it still
         -- has ownership. If it doesn't, remove it from the tracked list.
         local owner = common.serializeOwner(object.owner)
-        
+
         itemRecordIDtoOwnerOverride[object.recordId] = owner
         if string.match(object.recordId, "gold_.*") then
             -- special case for stacks of gold.
@@ -235,14 +224,14 @@ local function onActivate(object, actor)
             end
         end
     elseif types.NPC.objectIsInstance(object) then
-        settings.debugPrint("activated "..object.recordId)
+        settings.debugPrint("activated " .. object.recordId)
         actor:sendEvent(settings.MOD_NAME .. "onNPCActivated", {
             npc = object
         })
-        
+
     end
 
-    --settings.debugPrint("backup owners: " .. aux_util.deepToString(itemRecordIDtoOwnerOverride, 3))
+    -- settings.debugPrint("backup owners: " .. aux_util.deepToString(itemRecordIDtoOwnerOverride, 3))
 end
 
 -- onSpotted is called when a player is spotted by an NPC.
@@ -266,8 +255,8 @@ local function onCellEnter(data)
 
     -- clean up new cell
     -- wow this cell state pattern is gross
-    --local cellState = getCellState(data.cellID, data.player.id)
-    --clearCellState(cellState)
+    -- local cellState = getCellState(data.cellID, data.player.id)
+    -- clearCellState(cellState)
 
     -- save bounty
     local cellState = getCellState(data.cellID, data.player.id)
@@ -572,7 +561,8 @@ local function resolvePendingTheft(data)
                     caught = false
                 })
             end
-        elseif (owner.factionId ~= nil) and (common.atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
+        elseif (owner.factionId ~= nil) and
+            (common.atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
             settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
                                     newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
                                     tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
@@ -686,9 +676,9 @@ local function onCellChange(data)
             player = data.player,
             cellID = data.lastCellID
         })
+        -- lastCellID might be nil on load.
+        interfaces.ErnBurglary.__onNoWitnesses(data.player, data.newCellID)
     end
-    
-    interfaces.ErnBurglary.__onNoWitnesses(data.player, data.newCellID)
 
     onCellEnter({
         player = data.player,
@@ -824,6 +814,38 @@ local function onPaidBounty(data)
     local cellState = getCellState(data.player.cell.id, data.player.id)
     cellState.startingBounty = 0
     saveCellState(cellState)
+end
+
+local resendSpottedStatusCallback = async:registerTimerCallback(settings.MOD_NAME .. "_resendSpottedStatusCallback", function(data)
+    for _, player in ipairs(world.players) do
+        local cellState = getCellState(player.cell.id, player.id)
+        for npcID, spotted in pairs(cellState.spottedByActorId) do
+            if spotted then
+                settings.debugPrint("re-sending spotted status by " .. npcID)
+                onSpotted({
+                    player = player,
+                    cellID = player.cell.id,
+                    npc = {
+                        id = npcID
+                    }
+                })
+            end
+        end
+    end
+end)
+
+local function saveState()
+    return persistedState
+end
+
+local function loadState(saved)
+    if saved == nil then
+        persistedState = {}
+    else
+        persistedState = saved
+        -- re-send spotted events on load.
+        async:newGameTimer(0.1, resendSpottedStatusCallback, {})
+    end
 end
 
 return {

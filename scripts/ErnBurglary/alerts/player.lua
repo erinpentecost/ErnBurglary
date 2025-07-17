@@ -152,11 +152,14 @@ local function alertsOnSpottedChange(data)
             ignoreReflect = true
         })
 
-        local npcName = types.NPC.record(data.npc).name
-        if (settings.quietMode() ~= true) and sneaking then
-            queueMessage(localization("showSpottedMessage", {
-                actorName = npcName
-            }))
+        -- npc might not be real npc object.
+        if (type(data.npc) ~= "table") and types.NPC.objectIsInstance(data.npc) then
+            local npcRecord = types.NPC.record(data.npc)
+            if (settings.quietMode() ~= true) and sneaking then
+                queueMessage(localization("showSpottedMessage", {
+                    actorName = npcRecord.name
+                }))
+            end
         end
     end
 
