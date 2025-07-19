@@ -32,8 +32,17 @@ settings.registerPage()
 -- otherwise, it will be the cell we just moved from.
 local lastCellID = nil
 
--- spotted is used cases where we were spotted before sneaking
-local sneaking = false
+local sneaking = nil
+
+local function updateSneaking(newStatus)
+    -- only send event on change.
+    if (sneaking == nil) or (sneaking ~= newStatus) then
+        self:sendEvent(settings.MOD_NAME .. "onSneakChange", newStatus)
+    end
+    sneaking = newStatus
+end
+-- send event for initial status
+updateSneaking(self.controls.sneak)
 
 -- inDialogue is true while talking to an NPC.
 -- this is an attempt to get this working with Pause Control.
@@ -126,7 +135,7 @@ local function sneakCheck(actor, distance)
     end
 
     -- if we aren't sneaking, then you don't pass the check.
-    if sneaking ~= true then
+    if self.controls.sneak ~= true then
         return false
     end
 
@@ -139,30 +148,10 @@ local function sneakCheck(actor, distance)
 end
 
 local function registerHandlers()
-    local sneakGroups = {"sneakforward", "sneakleft", "sneakright", "sneakback"}
-    for _, group in ipairs(sneakGroups) do
-        interfaces.AnimationController.addTextKeyHandler(group, function(group, key)
-
-            if sneaking == false then
-                self:sendEvent(settings.MOD_NAME .. "onSneakChange", true)
-            end
-
-            sneaking = true
-        end)
-    end
-
-    local nonSneakGroups = {"walkforward", "walkleft", "walkright", "walkback", "runforward", "runleft", "runright",
-                            "runback"}
-    for _, group in ipairs(nonSneakGroups) do
-        interfaces.AnimationController.addTextKeyHandler(group, function(group, key)
-
-            if sneaking == true then
-                self:sendEvent(settings.MOD_NAME .. "onSneakChange", false)
-            end
-
-            sneaking = false
-        end)
-    end
+    interfaces.AnimationController.addTextKeyHandler("", function(group, key)
+        --settings.debugPrint("animation group:"..group.." key:"..key)
+        updateSneaking(self.controls.sneak)
+    end)
 end
 
 registerHandlers()

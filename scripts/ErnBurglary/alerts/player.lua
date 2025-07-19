@@ -120,8 +120,12 @@ end
 settings.onUISettingsChange(resetIcon)
 
 local function onSneakChange(sneakStatus)
+    local changed = false
+    if sneaking ~= sneakStatus then
+        changed = true
+    end
     sneaking = sneakStatus
-    if (settings.quietMode() ~= true) and sneaking and spotted then
+    if (settings.quietMode() ~= true) and changed and sneaking and spotted then
         queueMessage(localization("showWarningMessage", {}))
     end
 
