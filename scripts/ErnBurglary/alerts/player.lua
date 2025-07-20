@@ -97,12 +97,12 @@ local function drawSpottedIcon()
     end
     if (spotted and interfaces.UI.isHudVisible()) and
         ((settings.icon()["showIcon"] == "always") or (sneaking and settings.icon()["showIcon"] ~= "never")) then
-        settings.debugPrint("Spotted Icon: revealing")
+        settings.debugPrint("Spotted Icon: revealing. spotted: "..tostring(spotted)..", sneaking: "..tostring(sneaking))
         spottedIcon.layout.props.visible = true
         spottedIcon:update()
         ui.updateAll()
     else
-        settings.debugPrint("Spotted Icon: hiding")
+        settings.debugPrint("Spotted Icon: hiding. spotted: "..tostring(spotted)..", sneaking: "..tostring(sneaking))
         spottedIcon.layout.props.visible = false
         spottedIcon:update()
         ui.updateAll()
