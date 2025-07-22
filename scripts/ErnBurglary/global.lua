@@ -617,6 +617,10 @@ local function resolvePendingTheft(data)
         totalBounty = totalBounty + handleTheftSeenByGuard(data.player, guardTheftValue)
     end
 
+    -- TODO: use https://openmw.readthedocs.io/en/stable/reference/lua-scripting/interface_crimes.html#interface-crimes
+    -- this would make crime penalties match vanilla.
+    -- maybe just use this to find witnesses with wasCrimeSeen?
+
     if totalBounty > 0 then
         -- this spawns a popup message each time.
         -- that's why we only apply it once.
@@ -697,34 +701,34 @@ local function onNewItems(data)
     settings.debugPrint("onNewItems(" .. aux_util.deepToString(data) .. ")")
     local cellState = getCellState(data.cellID, data.player.id)
     for _, itemBag in ipairs(data.itemsList) do
-        if (itemBag == nil) then
-            error("item is nil")
-        end
+        if (itemBag ~= nil) and (itemBag.item ~= nil) and itemBag.item:isValid() then
+            if cellState.newItems[itemBag.item.id] ~= nil then
+                -- check for stack change
+                local oldCount = cellState.newItems[itemBag.item.id].count
+                local newCount = oldCount + itemBag.count
+                itemBag = {
+                    item = itemBag.item,
+                    count = newCount
+                }
+                settings.debugPrint("increased stack of new item " .. itemBag.item.recordId .. " from " .. oldCount ..
+                                        " to " .. newCount)
+            end
 
-        if cellState.newItems[itemBag.item.id] ~= nil then
-            -- check for stack change
-            local oldCount = cellState.newItems[itemBag.item.id].count
-            local newCount = oldCount + itemBag.count
-            itemBag = {
-                item = itemBag.item,
-                count = newCount
-            }
-            settings.debugPrint("increased stack of new item " .. itemBag.item.recordId .. " from " .. oldCount ..
-                                    " to " .. newCount)
-        end
+            local backupOwner = itemRecordIDtoOwnerOverride[itemBag.item.recordId]
+            if backupOwner ~= nil then
+                settings.debugPrint("found backup owner of new item " .. itemBag.item.recordId .. ": " ..
+                                        aux_util.deepToString(backupOwner, 3))
+                itemBag = {
+                    item = itemBag.item,
+                    count = itemBag.count,
+                    backupOwner = backupOwner
+                }
+            end
 
-        local backupOwner = itemRecordIDtoOwnerOverride[itemBag.item.recordId]
-        if backupOwner ~= nil then
-            settings.debugPrint("found backup owner of new item " .. itemBag.item.recordId .. ": " ..
-                                    aux_util.deepToString(backupOwner, 3))
-            itemBag = {
-                item = itemBag.item,
-                count = itemBag.count,
-                backupOwner = backupOwner
-            }
+            cellState.newItems[itemBag.item.id] = itemBag
+        else
+            settings.debugPrint("item is nil or invalid")
         end
-
-        cellState.newItems[itemBag.item.id] = itemBag
     end
     saveCellState(cellState)
     itemRecordIDtoOwnerOverride = {}
@@ -816,23 +820,24 @@ local function onPaidBounty(data)
     saveCellState(cellState)
 end
 
-local resendSpottedStatusCallback = async:registerTimerCallback(settings.MOD_NAME .. "_resendSpottedStatusCallback", function(data)
-    for _, player in ipairs(world.players) do
-        local cellState = getCellState(player.cell.id, player.id)
-        for npcID, spotted in pairs(cellState.spottedByActorId) do
-            if spotted then
-                settings.debugPrint("re-sending spotted status by " .. npcID)
-                onSpotted({
-                    player = player,
-                    cellID = player.cell.id,
-                    npc = {
-                        id = npcID
-                    }
-                })
+local resendSpottedStatusCallback = async:registerTimerCallback(settings.MOD_NAME .. "_resendSpottedStatusCallback",
+    function(data)
+        for _, player in ipairs(world.players) do
+            local cellState = getCellState(player.cell.id, player.id)
+            for npcID, spotted in pairs(cellState.spottedByActorId) do
+                if spotted then
+                    settings.debugPrint("re-sending spotted status by " .. npcID)
+                    onSpotted({
+                        player = player,
+                        cellID = player.cell.id,
+                        npc = {
+                            id = npcID
+                        }
+                    })
+                end
             end
         end
-    end
-end)
+    end)
 
 local function saveState()
     return persistedState

@@ -95,18 +95,20 @@ local function drawSpottedIcon()
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
+    local visible = false
     if (spotted and interfaces.UI.isHudVisible()) and
         ((settings.icon()["showIcon"] == "always") or (sneaking and settings.icon()["showIcon"] ~= "never")) then
-        settings.debugPrint("Spotted Icon: revealing. spotted: "..tostring(spotted)..", sneaking: "..tostring(sneaking))
-        spottedIcon.layout.props.visible = true
-        spottedIcon:update()
-        ui.updateAll()
+        settings.debugPrint("Spotted Icon: revealing. spotted: " .. tostring(spotted) .. ", sneaking: " ..
+                                tostring(sneaking))
+        visible = true
     else
-        settings.debugPrint("Spotted Icon: hiding. spotted: "..tostring(spotted)..", sneaking: "..tostring(sneaking))
-        spottedIcon.layout.props.visible = false
-        spottedIcon:update()
-        ui.updateAll()
+        settings.debugPrint("Spotted Icon: hiding. spotted: " .. tostring(spotted) .. ", sneaking: " ..
+                                tostring(sneaking))
+        visible = false
     end
+    spottedIcon.layout.props.visible = visible
+    spottedIcon:update()
+    ui.updateAll()
 end
 
 local function resetIcon()
@@ -130,6 +132,13 @@ local function onSneakChange(sneakStatus)
     end
 
     drawSpottedIcon()
+end
+
+local function registerHandlers()
+    interfaces.AnimationController.addTextKeyHandler("", function(group, key)
+        -- settings.debugPrint("animation group:"..group.." key:"..key)
+        onSneakChange(self.controls.sneak)
+    end)
 end
 
 local function alertsOnSpottedChange(data)
@@ -186,6 +195,10 @@ local function showExpelledMessage(data)
 end
 
 local function onUpdate(dt)
+    if interfaces.UI.isHudVisible() == false then
+        drawSpottedIcon()
+    end
+    
     if pendingMessage == nil then
         return
     end
@@ -205,6 +218,7 @@ return {
         [settings.MOD_NAME .. "onSneakChange"] = onSneakChange
     },
     engineHandlers = {
-        onUpdate = onUpdate
+        onUpdate = onUpdate,
+        onKeyPress = onKeyPress
     }
 }

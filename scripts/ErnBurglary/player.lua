@@ -32,18 +32,6 @@ settings.registerPage()
 -- otherwise, it will be the cell we just moved from.
 local lastCellID = nil
 
-local sneaking = nil
-
-local function updateSneaking(newStatus)
-    -- only send event on change.
-    if (sneaking == nil) or (sneaking ~= newStatus) then
-        self:sendEvent(settings.MOD_NAME .. "onSneakChange", newStatus)
-    end
-    sneaking = newStatus
-end
--- send event for initial status
-updateSneaking(self.controls.sneak)
-
 -- inDialogue is true while talking to an NPC.
 -- this is an attempt to get this working with Pause Control.
 local inDialogue = false
@@ -147,12 +135,7 @@ local function sneakCheck(actor, distance)
     return sneakChance >= roll
 end
 
-local function registerHandlers()
-    interfaces.AnimationController.addTextKeyHandler("", function(group, key)
-        --settings.debugPrint("animation group:"..group.." key:"..key)
-        updateSneaking(self.controls.sneak)
-    end)
-end
+
 
 registerHandlers()
 
