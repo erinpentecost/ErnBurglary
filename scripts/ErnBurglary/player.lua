@@ -135,10 +135,6 @@ local function sneakCheck(actor, distance)
     return sneakChance >= roll
 end
 
-
-
-registerHandlers()
-
 local function isTalking(actor)
     return core.sound.isSayActive(actor)
 end
@@ -313,7 +309,7 @@ local function onInfrequentUpdate(dt)
 end
 
 local infrequentMap = infrequent.FunctionCollection:new()
-infrequentMap:addCallback("onInfrequentUpdate", 0.1, onInfrequentUpdate)
+infrequentMap:addCallback("onInfrequentUpdate", 0.15, onInfrequentUpdate)
 
 local function onUpdate(dt)
     infrequentMap:onUpdate(dt)

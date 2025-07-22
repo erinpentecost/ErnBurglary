@@ -19,6 +19,7 @@ local types = require("openmw.types")
 local settings = require("scripts.ErnBurglary.settings")
 local self = require("openmw.self")
 local core = require("openmw.core")
+local infrequent = require("scripts.ErnBurglary.infrequent")
 local localization = core.l10n(settings.MOD_NAME)
 local async = require("openmw.async")
 local ui = require('openmw.ui')
@@ -98,12 +99,12 @@ local function drawSpottedIcon()
     local visible = false
     if (spotted and interfaces.UI.isHudVisible()) and
         ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never")) then
-        settings.debugPrint("Spotted Icon: revealing. spotted: " .. tostring(spotted) .. ", sneaking: " ..
-                                tostring(self.controls.sneak))
+        --[[settings.debugPrint("Spotted Icon: revealing. spotted: " .. tostring(spotted) .. ", sneaking: " ..
+                                tostring(self.controls.sneak))]]
         visible = true
     else
-        settings.debugPrint("Spotted Icon: hiding. spotted: " .. tostring(spotted) .. ", sneaking: " ..
-                                tostring(self.controls.sneak))
+        --[[settings.debugPrint("Spotted Icon: hiding. spotted: " .. tostring(spotted) .. ", sneaking: " ..
+                                tostring(self.controls.sneak))]]
         visible = false
     end
     spottedIcon.layout.props.visible = visible
@@ -183,7 +184,7 @@ local function showExpelledMessage(data)
     }))
 end
 
-local function onUpdate(dt)
+local function onInfrequentUpdate(dt)
     onSneakChange(self.controls.sneak)
 
     drawSpottedIcon()
@@ -199,6 +200,15 @@ local function onUpdate(dt)
     pendingMessage = nil
 end
 
+local infrequentMap = infrequent.FunctionCollection:new()
+infrequentMap:addCallback("onInfrequentUpdate", 0.09, onInfrequentUpdate)
+
+local function onUpdate(dt)
+    infrequentMap:onUpdate(dt)
+end
+
+
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "alertsOnSpottedChange"] = alertsOnSpottedChange,
@@ -207,6 +217,5 @@ return {
     },
     engineHandlers = {
         onUpdate = onUpdate,
-        onKeyPress = onKeyPress
     }
 }
