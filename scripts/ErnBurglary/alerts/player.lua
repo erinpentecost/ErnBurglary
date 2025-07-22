@@ -19,6 +19,7 @@ local types = require("openmw.types")
 local settings = require("scripts.ErnBurglary.settings")
 local self = require("openmw.self")
 local core = require("openmw.core")
+local infrequent = require("scripts.ErnBurglary.infrequent")
 local localization = core.l10n(settings.MOD_NAME)
 local async = require("openmw.async")
 local ui = require('openmw.ui')
@@ -95,18 +96,20 @@ local function drawSpottedIcon()
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
+    local visible = false
     if (spotted and interfaces.UI.isHudVisible()) and
-        ((settings.icon()["showIcon"] == "always") or (sneaking and settings.icon()["showIcon"] ~= "never")) then
-        settings.debugPrint("Spotted Icon: revealing. spotted: "..tostring(spotted)..", sneaking: "..tostring(sneaking))
-        spottedIcon.layout.props.visible = true
-        spottedIcon:update()
-        ui.updateAll()
+        ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never")) then
+        --[[settings.debugPrint("Spotted Icon: revealing. spotted: " .. tostring(spotted) .. ", sneaking: " ..
+                                tostring(self.controls.sneak))]]
+        visible = true
     else
-        settings.debugPrint("Spotted Icon: hiding. spotted: "..tostring(spotted)..", sneaking: "..tostring(sneaking))
-        spottedIcon.layout.props.visible = false
-        spottedIcon:update()
-        ui.updateAll()
+        --[[settings.debugPrint("Spotted Icon: hiding. spotted: " .. tostring(spotted) .. ", sneaking: " ..
+                                tostring(self.controls.sneak))]]
+        visible = false
     end
+    spottedIcon.layout.props.visible = visible
+    spottedIcon:update()
+    ui.updateAll()
 end
 
 local function resetIcon()
@@ -128,8 +131,6 @@ local function onSneakChange(sneakStatus)
     if (settings.quietMode() ~= true) and changed and sneaking and spotted then
         queueMessage(localization("showWarningMessage", {}))
     end
-
-    drawSpottedIcon()
 end
 
 local function alertsOnSpottedChange(data)
@@ -166,8 +167,6 @@ local function alertsOnSpottedChange(data)
             end
         end
     end
-
-    drawSpottedIcon()
 end
 
 local function showWantedMessage(data)
@@ -185,7 +184,11 @@ local function showExpelledMessage(data)
     }))
 end
 
-local function onUpdate(dt)
+local function onInfrequentUpdate(dt)
+    onSneakChange(self.controls.sneak)
+
+    drawSpottedIcon()
+
     if pendingMessage == nil then
         return
     end
@@ -197,14 +200,22 @@ local function onUpdate(dt)
     pendingMessage = nil
 end
 
+local infrequentMap = infrequent.FunctionCollection:new()
+infrequentMap:addCallback("onInfrequentUpdate", 0.09, onInfrequentUpdate)
+
+local function onUpdate(dt)
+    infrequentMap:onUpdate(dt)
+end
+
+
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "alertsOnSpottedChange"] = alertsOnSpottedChange,
         [settings.MOD_NAME .. "showWantedMessage"] = showWantedMessage,
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
-        [settings.MOD_NAME .. "onSneakChange"] = onSneakChange
     },
     engineHandlers = {
-        onUpdate = onUpdate
+        onUpdate = onUpdate,
     }
 }
