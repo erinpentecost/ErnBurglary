@@ -14,7 +14,8 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]] local interfaces = require("openmw.interfaces")
+]]
+local interfaces = require("openmw.interfaces")
 local types = require("openmw.types")
 local settings = require("scripts.ErnBurglary.settings")
 local self = require("openmw.self")
@@ -51,6 +52,7 @@ local function queueMessage(fmt, args)
     }
 end
 
+local visible = false
 local sneaking = false
 local spotted = false
 
@@ -74,7 +76,7 @@ local function makeIcon(path)
             anchor = util.vector2(0, 1),
             visible = false
         },
-        content = ui.content {{
+        content = ui.content { {
             type = ui.TYPE.Image,
             props = {
                 resource = ui.texture {
@@ -84,7 +86,7 @@ local function makeIcon(path)
                 size = util.vector2(size, size)
             },
             size = util.vector2(size, size)
-        }}
+        } }
     }
     return box
 end
@@ -96,20 +98,16 @@ local function drawSpottedIcon()
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
-    local visible = false
-    if (spotted and interfaces.UI.isHudVisible()) and
-        ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never")) then
-        --[[settings.debugPrint("Spotted Icon: revealing. spotted: " .. tostring(spotted) .. ", sneaking: " ..
-                                tostring(self.controls.sneak))]]
-        visible = true
-    else
-        --[[settings.debugPrint("Spotted Icon: hiding. spotted: " .. tostring(spotted) .. ", sneaking: " ..
-                                tostring(self.controls.sneak))]]
-        visible = false
+
+    local newVisible = (spotted and interfaces.UI.isHudVisible()) and
+        ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never"))
+
+    if newVisible ~= visible then
+        visible = newVisible
+        spottedIcon.layout.props.visible = newVisible
+        spottedIcon:update()
+        ui.updateAll()
     end
-    spottedIcon.layout.props.visible = visible
-    spottedIcon:update()
-    ui.updateAll()
 end
 
 local function resetIcon()
@@ -131,6 +129,9 @@ local function onSneakChange(sneakStatus)
     if (settings.quietMode() ~= true) and changed and sneaking and spotted then
         queueMessage(localization("showWarningMessage", {}))
     end
+    if changed then
+        drawSpottedIcon()
+    end
 end
 
 local function alertsOnSpottedChange(data)
@@ -151,7 +152,7 @@ local function alertsOnSpottedChange(data)
         spotted = true
         types.Actor.activeSpells(self):add({
             id = "ernburglary_spotted",
-            effects = {0},
+            effects = { 0 },
             ignoreResistances = true,
             ignoreSpellAbsorption = true,
             ignoreReflect = true
@@ -167,6 +168,8 @@ local function alertsOnSpottedChange(data)
             end
         end
     end
+
+    drawSpottedIcon()
 end
 
 local function showWantedMessage(data)
@@ -206,7 +209,6 @@ infrequentMap:addCallback("onInfrequentUpdate", 0.09, onInfrequentUpdate)
 local function onUpdate(dt)
     infrequentMap:onUpdate(dt)
 end
-
 
 
 return {
