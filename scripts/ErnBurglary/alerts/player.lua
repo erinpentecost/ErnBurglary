@@ -98,7 +98,6 @@ local function drawSpottedIcon()
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
-
     local newVisible = (spotted and interfaces.UI.isHudVisible()) and
         ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never"))
 
@@ -108,6 +107,9 @@ local function drawSpottedIcon()
         spottedIcon:update()
         ui.updateAll()
     end
+    spottedIcon.layout.props.visible = visible
+    spottedIcon:update()
+    ui.updateAll()
 end
 
 local function resetIcon()
@@ -168,8 +170,6 @@ local function alertsOnSpottedChange(data)
             end
         end
     end
-
-    drawSpottedIcon()
 end
 
 local function showWantedMessage(data)
