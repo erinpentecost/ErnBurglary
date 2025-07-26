@@ -54,7 +54,7 @@ When you leave the cell, the items you picked up are matched with their owners, 
 - Regionally Known Criminals
 - No Witness No Bounty
 
-![a thief with a big bag, created with AI](title_image.jpg)
+![a Khajiit thief](title_image.jpg)
 
 ## Installing
 Extract [main](https://github.com/erinpentecost/ErnBurglary/archive/refs/heads/main.zip) to your `mods/` folder.
@@ -70,7 +70,7 @@ content=ErnBurglary.omwscripts
 
 ## Integrations
 
-See the `interface.lua` file if you'd like to hook into spotted and theft events, or if you want to ensure compatibility with unpause mods. 
+See the `interface.lua` file if you'd like to hook into spotted and theft events, or if you want to ensure compatibility with unpause mods.
 
 
 ## Contributing

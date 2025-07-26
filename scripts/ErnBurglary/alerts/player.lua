@@ -152,13 +152,15 @@ local function alertsOnSpottedChange(data)
         end
     else
         spotted = true
-        types.Actor.activeSpells(self):add({
-            id = "ernburglary_spotted",
-            effects = { 0 },
-            ignoreResistances = true,
-            ignoreSpellAbsorption = true,
-            ignoreReflect = true
-        })
+        if (settings.drain()) then
+            types.Actor.activeSpells(self):add({
+                id = "ernburglary_spotted",
+                effects = { 0 },
+                ignoreResistances = true,
+                ignoreSpellAbsorption = true,
+                ignoreReflect = true
+            })
+        end
 
         -- npc might not be real npc object.
         if (type(data.npc) ~= "table") and types.NPC.objectIsInstance(data.npc) then
