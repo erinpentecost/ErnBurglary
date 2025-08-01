@@ -209,7 +209,9 @@ local infrequentMap = infrequent.FunctionCollection:new()
 infrequentMap:addCallback("onInfrequentUpdate", 0.09, onInfrequentUpdate)
 
 local function onUpdate(dt)
-    infrequentMap:onUpdate(dt)
+    if dt ~= 0 then
+        infrequentMap:onUpdate(dt)
+    end
 end
 
 

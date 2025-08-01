@@ -14,7 +14,8 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]] local settings = require("scripts.ErnBurglary.settings")
+]]
+local settings = require("scripts.ErnBurglary.settings")
 local common = require("scripts.ErnBurglary.common")
 local infrequent = require("scripts.ErnBurglary.infrequent")
 local interfaces = require('openmw.interfaces')
@@ -92,7 +93,7 @@ end
 
 local function clearCellState(cellState)
     settings.debugPrint("clearCellState(...) for player: " .. tostring(cellState.playerID) .. ", cell: " ..
-                            tostring(cellState.cellID))
+        tostring(cellState.cellID))
     persistedState[thieveryKey(cellState.cellID, cellState.playerID)] =
         newCellState(cellState.cellID, cellState.playerID)
 end
@@ -228,7 +229,6 @@ local function onActivate(object, actor)
         actor:sendEvent(settings.MOD_NAME .. "onNPCActivated", {
             npc = object
         })
-
     end
 
     -- settings.debugPrint("backup owners: " .. aux_util.deepToString(itemRecordIDtoOwnerOverride, 3))
@@ -374,7 +374,7 @@ local function handleTheftFromNPC(player, npc, value)
     local bounty = (value - dispoPenalty) * settings.bountyScale()
 
     print("Theft from " .. npc.recordId .. " dropped disposition by " .. dispoPenalty .. " from " .. startDisposition ..
-              ", and increased bounty by " .. bounty .. ".")
+        ", and increased bounty by " .. bounty .. ".")
     return bounty
 end
 
@@ -410,7 +410,7 @@ local function handleTheftFromFaction(player, faction, value)
     end
 
     print("Theft from " .. faction .. " dropped reputation by " .. reputationPenalty .. " from " .. startReputation ..
-              ". Expelled: " .. tostring(expelled))
+        ". Expelled: " .. tostring(expelled))
 
     return bounty
 end
@@ -482,7 +482,7 @@ local function resolvePendingTheft(data)
         end
         if newItemBag.count > 1 then
             settings.debugPrint("multiplying value of " .. itemRecord.name .. " (" .. value .. ") by count " ..
-                                    newItemBag.count .. ".")
+                newItemBag.count .. ".")
             value = value * newItemBag.count
         end
 
@@ -496,12 +496,12 @@ local function resolvePendingTheft(data)
         if (owner == nil) then
             -- the item is not owned.
             settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
-                                    newItem.id .. "): not owned by anyone")
+                newItem.id .. "): not owned by anyone")
         elseif (owner.recordId ~= nil) then
             settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
-                                    newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
-                                    tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
-                                    value)
+                newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
+                tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
+                value)
             -- the item is owned by an individual.
             -- if that individual is alive, they will report.
             -- instance can be nil if the actor is dead.
@@ -564,9 +564,9 @@ local function resolvePendingTheft(data)
         elseif (owner.factionId ~= nil) and
             (common.atLeastRank(data.player, owner.factionId, owner.factionRank) == false) then
             settings.debugPrint("assessing " .. newItemBag.count .. " new item: " .. itemRecord.name .. "(" ..
-                                    newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
-                                    tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
-                                    value)
+                newItem.id .. ") owned by " .. tostring(owner.recordId) .. "/" ..
+                tostring(owner.factionId) .. "(" .. tostring(owner.factionRank) .. "), gp value: " ..
+                value)
 
             -- the item is owned by a faction.
             -- if any members of the faction spotted the player,
@@ -711,13 +711,13 @@ local function onNewItems(data)
                     count = newCount
                 }
                 settings.debugPrint("increased stack of new item " .. itemBag.item.recordId .. " from " .. oldCount ..
-                                        " to " .. newCount)
+                    " to " .. newCount)
             end
 
             local backupOwner = itemRecordIDtoOwnerOverride[itemBag.item.recordId]
             if backupOwner ~= nil then
                 settings.debugPrint("found backup owner of new item " .. itemBag.item.recordId .. ": " ..
-                                        aux_util.deepToString(backupOwner, 3))
+                    aux_util.deepToString(backupOwner, 3))
                 itemBag = {
                     item = itemBag.item,
                     count = itemBag.count,
@@ -759,12 +759,13 @@ end
 infrequentMap:addCallback("noWitnessCheck", 0.5, noWitnessCheck)
 
 local function onUpdate(dt)
-    infrequentMap:onUpdate(dt)
+    if dt ~= 0 then
+        infrequentMap:onUpdate(dt)
+    end
 end
 
 -- monitor for bounty increases. if it goes up, resolve pending thefts.
 local function onBountyIncreased(data)
-
     -- this var exists so we don't process cold-case thefts
     if skipNextBountyIncrease then
         settings.debugPrint("ignoring bounty increase")
@@ -796,7 +797,7 @@ local function onBountyIncreased(data)
     end
     if closestActor ~= nil then
         settings.debugPrint("bounty increased from " .. oldBounty .. " to " .. newBounty .. ". Assuming " ..
-                                closestActor.recordId .. " spotted us.")
+            closestActor.recordId .. " spotted us.")
         onSpotted({
             player = data.player,
             cellID = data.player.cell.id,
@@ -810,7 +811,6 @@ local function onBountyIncreased(data)
         cellID = data.player.cell.id,
         redHanded = true
     })
-
 end
 
 local function onPaidBounty(data)

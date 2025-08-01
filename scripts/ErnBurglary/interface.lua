@@ -14,7 +14,8 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]] local settings = require("scripts.ErnBurglary.settings")
+]]
+local settings = require("scripts.ErnBurglary.settings")
 local aux_util = require('openmw_aux.util')
 
 if require("openmw.core").API_REVISION < 62 then
@@ -43,12 +44,14 @@ local function addCoroutine(callback, data)
     })
 end
 
-local function onUpdate()
-    -- Only run one callback per frame.
-    if #coroutines > 0 then
-        local bag = table.remove(coroutines, 1)
-        --settings.debugPrint("Running callback with data=".. aux_util.deepToString(bag.data, 2))
-        bag.c(bag.data)
+local function onUpdate(dt)
+    if dt ~= 0 then
+        -- Only run one callback per frame.
+        if #coroutines > 0 then
+            local bag = table.remove(coroutines, 1)
+            --settings.debugPrint("Running callback with data=".. aux_util.deepToString(bag.data, 2))
+            bag.c(bag.data)
+        end
     end
 end
 
