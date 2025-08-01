@@ -14,7 +14,8 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]] local interfaces = require("openmw.interfaces")
+]]
+local interfaces = require("openmw.interfaces")
 local settings = require("scripts.ErnBurglary.settings")
 local infrequent = require("scripts.ErnBurglary.infrequent")
 local types = require("openmw.types")
@@ -46,7 +47,6 @@ local itemsInInventory = {}
 local function trackInventory()
     itemsInInventory = {}
     for _, item in ipairs(types.Actor.inventory(self):getAll()) do
-
         itemsInInventory[item.id] = {
             item = item,
             count = item.count
@@ -85,9 +85,9 @@ local function directionMult(actor)
 
     -- so, take (dot product)/2 + 1
 
-    local facing = actor.rotation:apply(util.vector3(0.0, 1.0 ,0.0)):normalize()
+    local facing = actor.rotation:apply(util.vector3(0.0, 1.0, 0.0)):normalize()
     local relativePos = (self.position - actor.position):normalize()
-    local mult = 1 + facing:dot(relativePos)/2
+    local mult = 1 + facing:dot(relativePos) / 2
     --settings.debugPrint("directionMult for " .. actor.recordId .. ": "..tostring(mult))
     return mult
 end
@@ -115,7 +115,6 @@ end
 
 -- sneakCheck should return true if the actor can't see the player.
 local function sneakCheck(actor, distance)
-
     local invisibilityEffect = types.Actor.activeEffects(self):getEffect(core.magic.EFFECT_TYPE.Invisibility)
     if (invisibilityEffect ~= nil) and (invisibilityEffect.magnitude > 0) then
         settings.debugPrint("invisible; ignoring greeting")
@@ -140,7 +139,6 @@ local function isTalking(actor)
 end
 
 local function sendSpottedEvent(npc)
-
     settings.debugPrint("sending spotted by event for " .. npc.recordId)
 
     core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
@@ -168,8 +166,8 @@ local function LOS(player, actor)
 
     -- and one more check from top of one box to near-center of other.
     -- this exists so merchants can spot you behind counters.
-    local actorHead = actor:getBoundingBox().center + util.vector3(0,0, actor:getBoundingBox().halfSize.z)
-    local playerChest = player:getBoundingBox().center + util.vector3(0,0, (player:getBoundingBox().halfSize.z)/2)
+    local actorHead = actor:getBoundingBox().center + util.vector3(0, 0, actor:getBoundingBox().halfSize.z)
+    local playerChest = player:getBoundingBox().center + util.vector3(0, 0, (player:getBoundingBox().halfSize.z) / 2)
 
     local castResult = nearby.castRay(actorHead, playerChest, {
         collisionType = nearby.COLLISION_TYPE.AnyPhysical,
@@ -186,7 +184,6 @@ local function LOS(player, actor)
 end
 
 local function detectionCheck(dt)
-
     -- find out which NPC is talking
     for _, actor in ipairs(nearby.actors) do
         -- check for detection
@@ -228,7 +225,7 @@ local function inventoryChangeCheck(dt)
             }
             table.insert(newItemsList, newBag)
             settings.debugPrint("found " .. tostring(newBag.count) .. " new items in stack: " ..
-                                    aux_util.deepToString(item, 2))
+                aux_util.deepToString(item, 2))
             -- update count in stack
             local updatedBag = {
                 item = item,
@@ -254,7 +251,7 @@ local function inventoryChangeCheck(dt)
         if itemCell == nil or itemCell == "" then
             itemCell = self.cell.id
         end
-        
+
         core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
             player = self,
             cellID = itemCell,
@@ -312,7 +309,9 @@ local infrequentMap = infrequent.FunctionCollection:new()
 infrequentMap:addCallback("onInfrequentUpdate", 0.15, onInfrequentUpdate)
 
 local function onUpdate(dt)
-    infrequentMap:onUpdate(dt)
+    if dt ~= 0 then
+        infrequentMap:onUpdate(dt)
+    end
 end
 
 local lastNPCActivated = nil
@@ -322,7 +321,7 @@ local function onNPCActivated(data)
 end
 
 local function UiModeChanged(data)
-    settings.debugPrint("ui changed: "..aux_util.deepToString(data, 2))
+    settings.debugPrint("ui changed: " .. aux_util.deepToString(data, 2))
     if data.newMode == "Dialogue" or data.newMode == "Companion" then
         settings.debugPrint("in dialogue")
         if lastNPCActivated ~= nil then
@@ -377,4 +376,3 @@ return {
         onUpdate = onUpdate
     }
 }
-
