@@ -1,0 +1,54 @@
+name: "ErnBurglary"
+description: "Erschwert Einbruchdiebstähle, indem NPCs ein besseres Gedächtnis als ein Goldfisch bekommen."
+
+modSettingsTitle: "Mod-Optionen"
+modSettingsDesc: "Ändere, wie die Mod funktioniert."
+
+modSettingsGameplayTitle: "Gameplay-Optionen"
+modSettingsGameplayDesc: "Ändere, wie Spielmechaniken funktionieren."
+
+modSettingsUITitle: "Interface-Optionen"
+modSettingsUIDesc: "Ändere, wie Benutzeroberflächenfunktionen arbeiten."
+
+revertBounties_name: "Kopfgeld zurücksetzen bei keinen Zeugen"
+revertBounties_description: "Eine vollständige Neuumsetzung der großartigen Mod 'No Witness No Bounty'. Wenn alle Zeugen tot sind, bevor du das Gebiet verlässt, wird dein Kopfgeld zurückgesetzt."
+
+quietMode_name: "Weniger Benachrichtigungen"
+quietMode_description: "Aktiviere dies, um nur benachrichtigt zu werden, wenn dein Diebstahl bemerkt wurde."
+
+bountyScale_name: "Diebstahl-Kopfgeld skalieren"
+bountyScale_description: "Zur Berechnung des Kopfgeldes für Diebstahl wird der gestohlene Goldwert mit diesem Faktor multipliziert."
+
+trespassFine_name: "Strafe für Hausfriedensbruch"
+trespassFine_description: "Strafe, wenn du beim Eindringen erwischt wirst. Auf 0 setzen, um Hausfriedensbruch-Prüfungen zu deaktivieren. Nur für neue Spiele empfohlen."
+
+lenientFactions_name: "Nachsichtige Fraktionen"
+lenientFactions_description: "Der Ruf bei einer Fraktion sinkt nicht und du wirst nicht ausgeschlossen, wenn du nachträglich erwischt wirst. Du bekommst trotzdem ein Kopfgeld."
+
+disableDetection_name: "Erkennung deaktivieren"
+disableDetection_description: "Deaktiviert die Erkennungsprüfung, sodass du nie entdeckt wirst. Dies ist für die Kompatibilität mit anderen Mods gedacht, die das Schleichen überarbeiten. Nur aktivieren, wenn eine andere Mod es verlangt."
+
+drain_name: "Malus beim Schleichen"
+drain_description: "Aktiviere dies, um beim Entdecktwerden einen Schleichen-Malus zu erhalten."
+
+showIcon_name: "Symbol anzeigen"
+showIcon_description: "Zeigt ein Symbol an, wenn du entdeckt wurdest – abhängig von der gewählten Bedingung."
+sneaking: "schleichend"
+never: "nie     "
+always: "immer   "
+
+iconOffsetY_name: "Vertikaler Symbolversatz"
+iconOffsetX_name: "Horizontaler Symbolversatz"
+iconSize_name: "Symbolbildgröße"
+
+debugMode_name: "Debug-Modus"
+debugMode_description: "Gibt Debug-Nachrichten aus."
+
+showSpottedMessage: "Du wurdest von {actorName} entdeckt!"
+showWarningMessage: "Du wurdest zuvor in diesem Gebiet entdeckt."
+showNoWitnessesMessage: "Keine Zeugen mehr vorhanden."
+
+showWantedMessage: "Dein Einbruch von Waren im Wert von {value} Gold wurde bemerkt."
+showExpelledMessage: "Du wurdest aus {factionName} wegen Diebstahls ausgeschlossen."
+
+showTrespassingMessage: "Du begehst Hausfriedensbruch!"

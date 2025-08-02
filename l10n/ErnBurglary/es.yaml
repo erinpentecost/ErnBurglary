@@ -1,0 +1,54 @@
+name: "ErnBurglary"
+description: "Haz que robar no sea tan fácil al dar a los NPCs una memoria mejor que la de un pez dorado."
+
+modSettingsTitle: "Opciones del Mod"
+modSettingsDesc: "Cambia cómo funciona el mod."
+
+modSettingsGameplayTitle: "Opciones de Juego"
+modSettingsGameplayDesc: "Modifica cómo funcionan las mecánicas del juego."
+
+modSettingsUITitle: "Opciones de Interfaz"
+modSettingsUIDesc: "Modifica cómo funcionan las funciones de la interfaz de usuario."
+
+revertBounties_name: "Revertir Recompensa Sin Testigos"
+revertBounties_description: "Reimplementación desde cero del excelente mod 'No Witness No Bounty'. Si todos los testigos están muertos antes de salir del área, la recompensa será eliminada."
+
+quietMode_name: "Menos Notificaciones"
+quietMode_description: "Actívalo para recibir alertas solo cuando el robo sea detectado."
+
+bountyScale_name: "Escala de Recompensa por Robo"
+bountyScale_description: "Para calcular la recompensa por robo, multiplica el valor del oro robado por este número."
+
+trespassFine_name: "Multa por Allanamiento"
+trespassFine_description: "Penalización por ser atrapado allanando. Pon 0 para desactivar la verificación de allanamiento. Recomendado solo para partidas nuevas."
+
+lenientFactions_name: "Facciones Tolerantes"
+lenientFactions_description: "La reputación de facción no disminuirá y no serás expulsado si te atrapan después del hecho. Aún así recibirás una recompensa."
+
+disableDetection_name: "Desactivar Detección"
+disableDetection_description: "Desactiva la verificación de detección, así nunca serás visto. Esta opción es para compatibilidad con otros mods que modifican el sigilo. No actives esto a menos que otro mod lo indique."
+
+drain_name: "Penalización de Sigilo"
+drain_description: "Activa esto para aplicar una penalización al sigilo cuando te detectan."
+
+showIcon_name: "Mostrar Ícono"
+showIcon_description: "Muestra el ícono de 'Detectado' bajo la condición seleccionada."
+sneaking: "sigilo"
+never: "nunca   "
+always: "siempre "
+
+iconOffsetY_name: "Desplazamiento Vertical del Ícono"
+iconOffsetX_name: "Desplazamiento Horizontal del Ícono"
+iconSize_name: "Tamaño de Imagen del Ícono"
+
+debugMode_name: "Modo Depuración"
+debugMode_description: "Imprimir mensajes de depuración."
+
+showSpottedMessage: "¡Has sido detectado por {actorName}!"
+showWarningMessage: "Fuiste detectado anteriormente en esta zona."
+showNoWitnessesMessage: "No quedan testigos."
+
+showWantedMessage: "Tu robo de bienes valorados en {value} de oro fue descubierto."
+showExpelledMessage: "Has sido expulsado de {factionName} por robo."
+
+showTrespassingMessage: "¡Estás allanando propiedad privada!"
