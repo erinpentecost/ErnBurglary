@@ -56,6 +56,13 @@ local function disableDetection()
     return SettingsGameplay:get("disableDetection")
 end
 
+local function setDisableDetection(value)
+    if disableDetection() ~= value then
+        print("Setting 'disableDetection' to " .. tostring(value))
+        SettingsGameplay:set("disableDetection", value == true)
+    end
+end
+
 local iconOptions = { "sneaking", "never", "always" }
 
 local function icon()
@@ -235,6 +242,7 @@ return {
     trespassFine = trespassFine,
     lenientFactions = lenientFactions,
     disableDetection = disableDetection,
+    setDisableDetection = setDisableDetection,
 
     quietMode = quietMode,
     drain = drain,

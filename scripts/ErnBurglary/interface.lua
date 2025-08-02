@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local settings = require("scripts.ErnBurglary.settings")
+local core = require("openmw.core")
 local aux_util = require('openmw_aux.util')
 
 if require("openmw.core").API_REVISION < 62 then
@@ -142,6 +143,17 @@ local function __onCellChange(data)
     for _, callback in ipairs(onCellChangeCallbacks) do
         addCoroutine(callback, data)
     end
+end
+
+-- spotted will mark the player as Spotted by the NPC.
+-- if `override` is true, then ErnBurglary will turn off its normal detection checks.
+local function spotted(player, npc, override)
+    core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
+        player = player,
+        npc = npc,
+        cellID = player.cell.id,
+        override = (override == true),
+    })
 end
 
 -- setItemsAllowed will set the InDialogue flag.
