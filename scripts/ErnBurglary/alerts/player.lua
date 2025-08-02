@@ -82,7 +82,6 @@ local function makeIcon(path)
                 resource = ui.texture {
                     path = path
                 },
-                color = util.color.hex("f8a102"),
                 size = util.vector2(size, size)
             },
             size = util.vector2(size, size)
@@ -93,7 +92,9 @@ end
 
 local function drawSpottedIcon()
     if spottedIcon == nil then
-        local iconPath = core.magic.effects.records[core.magic.EFFECT_TYPE.Blind].icon
+        -- icons\s\tx_s_blind.dds
+        local iconPath = "icons\\ernburglary\\b_tx_spotted.dds"
+        --local iconPath = core.magic.effects.records[core.magic.EFFECT_TYPE.Blind].icon
         -- local iconPath = core.stats.Skill.records["sneak"].icon
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
