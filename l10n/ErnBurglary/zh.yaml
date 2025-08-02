@@ -1,0 +1,54 @@
+name: "ErnBurglary"
+description: "通过让 NPC 拥有比金鱼更强的记忆力，让盗窃行为不再轻松。"
+
+modSettingsTitle: "模组设置"
+modSettingsDesc: "修改模组的运行方式。"
+
+modSettingsGameplayTitle: "玩法设置"
+modSettingsGameplayDesc: "调整游戏机制的行为方式。"
+
+modSettingsUITitle: "界面设置"
+modSettingsUIDesc: "调整用户界面的显示与功能。"
+
+revertBounties_name: "无人目击撤销通缉"
+revertBounties_description: "从零重制的优秀模组“No Witness No Bounty”。如果在你离开区域前所有目击者都已死亡，通缉将被取消。"
+
+quietMode_name: "减少通知"
+quietMode_description: "启用后，只有在被发现时才会收到提示。"
+
+bountyScale_name: "盗窃通缉倍率"
+bountyScale_description: "盗窃所得的通缉金额 = 被盗物品价值 × 此倍率。"
+
+trespassFine_name: "擅闯罚金"
+trespassFine_description: "被抓到擅闯时的罚金。设为 0 可关闭此机制，仅建议用于新档。"
+
+lenientFactions_name: "宽容派系"
+lenientFactions_description: "若事后被发现，派系声望不会下降，你也不会被开除，但仍会产生通缉。"
+
+disableDetection_name: "关闭侦测"
+disableDetection_description: "关闭侦测机制，你将永远不会被发现。此选项用于与修改潜行系统的其他模组兼容，仅在有需要时启用。"
+
+drain_name: "潜行惩罚"
+drain_description: "启用后，被发现时会降低潜行效果。"
+
+showIcon_name: "显示图标"
+showIcon_description: "在满足指定条件时显示“被发现”图标。"
+sneaking: "潜行中"
+never: "从不 "
+always: "总是 "
+
+iconOffsetY_name: "图标垂直偏移"
+iconOffsetX_name: "图标水平偏移"
+iconSize_name: "图标大小"
+
+debugMode_name: "调试模式"
+debugMode_description: "输出调试信息。"
+
+showSpottedMessage: "你被 {actorName} 发现了！"
+showWarningMessage: "你之前在该区域被发现过。"
+showNoWitnessesMessage: "没有目击者。"
+
+showWantedMessage: "你偷盗的物品（价值 {value} 金币）被发现了。"
+showExpelledMessage: "你因盗窃被 {factionName} 驱逐。"
+
+showTrespassingMessage: "你正在擅自闯入！"

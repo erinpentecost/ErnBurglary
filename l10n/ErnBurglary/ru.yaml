@@ -1,0 +1,54 @@
+name: "ErnBurglary"
+description: "Сделайте кражу сложнее, дав NPC память лучше, чем у золотой рыбки."
+
+modSettingsTitle: "Настройки мода"
+modSettingsDesc: "Измените, как работает мод."
+
+modSettingsGameplayTitle: "Настройки игрового процесса"
+modSettingsGameplayDesc: "Измените работу игровых механик."
+
+modSettingsUITitle: "Настройки интерфейса"
+modSettingsUIDesc: "Измените функции пользовательского интерфейса."
+
+revertBounties_name: "Снять награду без свидетелей"
+revertBounties_description: "Полная реализация отличного мода 'No Witness No Bounty'. Если все свидетели мертвы до выхода из зоны, награда будет снята."
+
+quietMode_name: "Меньше уведомлений"
+quietMode_description: "Включите, чтобы получать уведомление только в случае, если кражу заметили."
+
+bountyScale_name: "Масштаб награды за кражу"
+bountyScale_description: "Для определения награды за кражу умножьте стоимость украденного золота на это число."
+
+trespassFine_name: "Штраф за вторжение"
+trespassFine_description: "Наказание за поимку при незаконном проникновении. Установите 0 для отключения проверки на вторжение. Рекомендуется только для новых игр."
+
+lenientFactions_name: "Мягкие фракции"
+lenientFactions_description: "Репутация во фракции не снизится и вас не исключат, если вас поймают постфактум. Награда всё равно начисляется."
+
+disableDetection_name: "Отключить обнаружение"
+disableDetection_description: "Отключает проверку обнаружения, так что вас никогда не заметят. Используется для совместимости с модами, изменяющими механику скрытности. Не включайте без необходимости."
+
+drain_name: "Штраф к скрытности"
+drain_description: "Включите, чтобы применять штраф к скрытности при обнаружении."
+
+showIcon_name: "Показать значок"
+showIcon_description: "Показывать значок обнаружения при выбранном условии."
+sneaking: "в скрытности"
+never: "никогда   "
+always: "всегда    "
+
+iconOffsetY_name: "Вертикальное смещение значка"
+iconOffsetX_name: "Горизонтальное смещение значка"
+iconSize_name: "Размер изображения значка"
+
+debugMode_name: "Режим отладки"
+debugMode_description: "Вывод отладочных сообщений."
+
+showSpottedMessage: "Вас заметил {actorName}!"
+showWarningMessage: "Ранее вас уже замечали в этой области."
+showNoWitnessesMessage: "Свидетелей больше нет."
+
+showWantedMessage: "Ваша кража имущества на сумму {value} золотых была замечена."
+showExpelledMessage: "Вы были исключены из фракции {factionName} за кражу."
+
+showTrespassingMessage: "Вы незаконно вторглись!"
