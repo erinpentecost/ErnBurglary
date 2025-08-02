@@ -138,6 +138,8 @@ local function isTalking(actor)
     return core.sound.isSayActive(actor)
 end
 
+-- sendSpottedEvent notifies the rest of the mod that a detection occurred. If you are making a sneak mechanic overhaul mod,
+-- then you should send the global event inside this function every time the player is spotted by an NPC.
 local function sendSpottedEvent(npc)
     settings.debugPrint("sending spotted by event for " .. npc.recordId)
 
@@ -169,7 +171,7 @@ local function LOS(player, actor)
     local actorHead = actor:getBoundingBox().center + util.vector3(0, 0, actor:getBoundingBox().halfSize.z)
     local playerChest = player:getBoundingBox().center + util.vector3(0, 0, (player:getBoundingBox().halfSize.z) / 2)
 
-    local castResult = nearby.castRay(actorHead, playerChest, {
+    castResult = nearby.castRay(actorHead, playerChest, {
         collisionType = nearby.COLLISION_TYPE.AnyPhysical,
         ignore = actor
     })
@@ -287,7 +289,9 @@ local function onInfrequentUpdate(dt)
         return
     end
 
-    detectionCheck(dt)
+    if settings.disableDetection() ~= true then
+        detectionCheck(dt)
+    end
 
     local newBounty = types.Player.getCrimeLevel(self)
     if bounty < newBounty then

@@ -52,6 +52,10 @@ local function lenientFactions()
     return SettingsGameplay:get("lenientFactions")
 end
 
+local function disableDetection()
+    return SettingsGameplay:get("disableDetection")
+end
+
 local iconOptions = { "sneaking", "never", "always" }
 
 local function icon()
@@ -136,6 +140,12 @@ local function initSettings()
             name = "lenientFactions_name",
             description = "lenientFactions_description",
             default = true,
+            renderer = "checkbox"
+        }, {
+            key = "disableDetection",
+            name = "disableDetection_name",
+            description = "disableDetection_description",
+            default = false,
             renderer = "checkbox"
         } }
     }
@@ -224,6 +234,7 @@ return {
     bountyScale = bountyScale,
     trespassFine = trespassFine,
     lenientFactions = lenientFactions,
+    disableDetection = disableDetection,
 
     quietMode = quietMode,
     drain = drain,

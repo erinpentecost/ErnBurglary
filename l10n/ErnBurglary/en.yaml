@@ -25,6 +25,9 @@ trespassFine_description: "Penalty for being caught trespassing. Set to 0 to dis
 lenientFactions_name: "Lenient Factions"
 lenientFactions_description: "Faction reputation won't drop and you won't get expelled if you're caught after-the-fact. You'll still accrue a bounty."
 
+disableDetection_name: "Disable Detection"
+disableDetection_description: "Turn off the detection check, so you're never Spotted. This is here for compatibility with other mods that overhaul the Sneak mechanic. Don't turn this on unless a different mod tells you to."
+
 drain_name: "Sneak Penalty"
 drain_description: "Turn this on to apply a sneak penalty while Spotted."
 
