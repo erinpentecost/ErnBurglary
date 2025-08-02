@@ -239,12 +239,16 @@ end
 -- player
 -- cellID
 -- npc
+-- override
 local function onSpotted(data)
     settings.debugPrint("onSpotted(" .. aux_util.deepToString(data) .. ")")
     local cellState = getCellState(data.cellID, data.player.id)
     cellState.spottedByActorId[data.npc.id] = true
     saveCellState(cellState)
     interfaces.ErnBurglary.__onSpotted(data.player, data.npc, data.cellID)
+    if data.override then
+        settings.setDisableDetection(true)
+    end
 end
 
 -- params:
