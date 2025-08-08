@@ -48,6 +48,10 @@ local function trespassFine()
     return SettingsGameplay:get("trespassFine")
 end
 
+local function sneakXPScale()
+    return SettingsGameplay:get("sneakXPScale")
+end
+
 local function lenientFactions()
     return SettingsGameplay:get("lenientFactions")
 end
@@ -133,6 +137,17 @@ local function initSettings()
             renderer = "number",
             argument = {
                 integer = true,
+                min = 0,
+                max = 1000
+            }
+        }, {
+            key = "sneakXPScale",
+            name = "sneakXPScale_name",
+            description = "sneakXPScale_description",
+            default = 0.1,
+            renderer = "number",
+            argument = {
+                integer = false,
                 min = 0,
                 max = 1000
             }
@@ -240,6 +255,7 @@ return {
     revertBounties = revertBounties,
     bountyScale = bountyScale,
     trespassFine = trespassFine,
+    sneakXPScale = sneakXPScale,
     lenientFactions = lenientFactions,
     disableDetection = disableDetection,
     setDisableDetection = setDisableDetection,
