@@ -8,3 +8,6 @@ PLAYER:scripts/ErnBurglary/alerts/player.lua
 
 GLOBAL:scripts/ErnBurglary/trespass/global.lua
 PLAYER:scripts/ErnBurglary/trespass/player.lua
+
+GLOBAL:scripts/ErnBurglary/xp/global.lua
+PLAYER:scripts/ErnBurglary/xp/player.lua

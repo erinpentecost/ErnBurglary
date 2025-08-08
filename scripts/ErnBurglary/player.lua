@@ -262,7 +262,7 @@ local function inventoryChangeCheck(dt)
     end
 end
 
-local bounty = 0
+local bounty = types.Player.getCrimeLevel(self)
 
 local function onInfrequentUpdate(dt)
     -- this is not called when the game is paused.

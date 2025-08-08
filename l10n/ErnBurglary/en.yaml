@@ -22,6 +22,9 @@ bountyScale_description: "To determine the bounty for theft, multiply the stolen
 trespassFine_name: "Trespass Bounty"
 trespassFine_description: "Penalty for being caught trespassing. Set to 0 to disable trespassing checks. Only recommended for new games."
 
+sneakXPScale_name: "Sneak XP Scale"
+sneakXPScale_description: "Gain Sneak Skill experience equal to the value of unspotted thefted items, multiplied by this scaling factor."
+
 lenientFactions_name: "Lenient Factions"
 lenientFactions_description: "Faction reputation won't drop and you won't get expelled if you're caught after-the-fact. You'll still accrue a bounty."
 
