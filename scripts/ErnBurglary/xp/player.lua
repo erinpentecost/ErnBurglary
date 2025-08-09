@@ -15,24 +15,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local settings = require("scripts.ErnBurglary.settings")
-local self     = require('openmw.self')
-local types    = require("openmw.types")
-local core     = require("openmw.core")
-local aux_util = require('openmw_aux.util')
+local settings   = require("scripts.ErnBurglary.settings")
+local interfaces = require("openmw.interfaces")
+local core       = require("openmw.core")
 
 local function xpOnStolenCallback(data)
-    -- just allow one level up at a time.
-    -- do this because progress needs to scale based on current sneak level.
-    -- this is not ideal.
-    local sneakSkill = types.Player.stats.skills.sneak(self)
-    local additional = data / (sneakSkill.base ^ 1.7)
-    sneakSkill.progress = math.min(1.0001, sneakSkill.progress + additional)
-
-    settings.debugPrint("xpOnStolenCallback(" ..
-        tostring(data) ..
-        "): sneak skill is now " ..
-        tostring(sneakSkill.progress) .. " after adding " .. tostring(additional) .. " (stole " .. data .. ")")
+    interfaces.SkillProgression.skillUsed(core.stats.Skill.records.sneak.id,
+        { scale = math.min(3, math.log(data)), useType = interfaces.SkillProgression.SKILL_USE_TYPES.Sneak_PickPocket })
 end
 
 return {
