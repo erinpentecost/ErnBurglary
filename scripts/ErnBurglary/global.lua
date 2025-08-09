@@ -172,8 +172,12 @@ local function onActivate(object, actor)
     if types.Container.objectIsInstance(object) then
         settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player)")
         local inventory = types.Container.inventory(object)
-        if inventory:isResolved() ~= true then
-            settings.debugPrint("unresolved container!")
+        if (inventory:isResolved() ~= true) and (object.isOrganic == false) then
+            -- We can't resolve organic containers because it breaks Graphic Herbalism.
+            -- This means you won't get in trouble for picking flowers.
+            inventory:resolve()
+            settings.debugPrint("resolved container")
+            inventory = types.Container.inventory(object)
         end
 
         -- Objects in containers don't have owners.
