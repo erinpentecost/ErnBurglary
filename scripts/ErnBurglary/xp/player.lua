@@ -21,7 +21,11 @@ local core       = require("openmw.core")
 
 local function xpOnStolenCallback(data)
     interfaces.SkillProgression.skillUsed(core.stats.Skill.records.sneak.id,
-        { scale = math.min(3, math.log(data)), useType = interfaces.SkillProgression.SKILL_USE_TYPES.Sneak_PickPocket })
+        {
+            scale = math.max(0, math.min(3, math.log(data))),
+            useType = interfaces.SkillProgression.SKILL_USE_TYPES
+                .Sneak_PickPocket
+        })
 end
 
 return {
