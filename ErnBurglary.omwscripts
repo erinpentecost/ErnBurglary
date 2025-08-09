@@ -3,6 +3,8 @@ GLOBAL:scripts/ErnBurglary/interface.lua
 GLOBAL:scripts/ErnBurglary/global.lua
 GLOBAL:scripts/ErnBurglary/interface_test.lua
 
+GLOBAL:scripts/ErnBurglary/crimes.lua
+
 GLOBAL:scripts/ErnBurglary/alerts/global.lua
 PLAYER:scripts/ErnBurglary/alerts/player.lua
 
