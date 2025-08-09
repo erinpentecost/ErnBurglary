@@ -173,9 +173,7 @@ local function onActivate(object, actor)
         settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player)")
         local inventory = types.Container.inventory(object)
         if inventory:isResolved() ~= true then
-            inventory:resolve()
-            settings.debugPrint("resolved container")
-            inventory = types.Container.inventory(object)
+            settings.debugPrint("unresolved container!")
         end
 
         -- Objects in containers don't have owners.
