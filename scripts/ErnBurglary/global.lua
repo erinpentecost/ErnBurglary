@@ -171,10 +171,13 @@ local function onActivate(object, actor)
 
     if types.Container.objectIsInstance(object) then
         settings.debugPrint("onActivate(" .. tostring(object.id) .. ", player)")
+        local containerRecord = types.Container.record(object)
         local inventory = types.Container.inventory(object)
-        if inventory:isResolved() ~= true then
+        if (inventory:isResolved() ~= true) and (containerRecord.isOrganic == false) then
+            -- We can't resolve organic containers because it breaks Graphic Herbalism
+            -- in OpenMW 0.50. There's a race condition where the plant mesh is not updated.
             inventory:resolve()
-            settings.debugPrint("resolved container")
+            settings.debugPrint("resolved not-organic container " .. containerRecord.id)
             inventory = types.Container.inventory(object)
         end
 
