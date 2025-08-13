@@ -22,7 +22,7 @@ local settings = require("scripts.ErnBurglary.settings")
 local function onStolenCallback(stolenItemsData)
     for _, data in ipairs(stolenItemsData) do
         if data.caught == false then
-            local xp = data.itemRecord.value * data.count * settings.sneakXPScale()
+            local xp = data.itemRecord.value * data.count
             if xp > 0 then
                 data.player:sendEvent(settings.MOD_NAME .. "xpOnStolenCallback", xp)
             end
