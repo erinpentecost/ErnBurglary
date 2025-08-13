@@ -219,6 +219,10 @@ local function inventoryChangeCheck(dt)
             settings.debugPrint("found " .. tostring(newBag.count) .. " new item: " .. aux_util.deepToString(item, 2))
             -- don't re-add the item
             itemsInInventory[item.id] = newBag
+        elseif (item.count == nil) or (itemBag.count == nil) then
+            -- TODO: actually fix this sometime.
+            error("Something bad happened.")
+            return
         elseif item.count > itemBag.count then
             -- the count of the item in the player inventory went up.
             local newBag = {

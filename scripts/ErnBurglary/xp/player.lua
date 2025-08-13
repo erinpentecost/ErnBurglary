@@ -20,12 +20,18 @@ local interfaces = require("openmw.interfaces")
 local core       = require("openmw.core")
 
 local function xpOnStolenCallback(data)
-    interfaces.SkillProgression.skillUsed(core.stats.Skill.records.sneak.id,
-        {
-            scale = math.max(0, math.min(3, math.log(data))),
-            useType = interfaces.SkillProgression.SKILL_USE_TYPES
-                .Sneak_PickPocket
-        })
+    -- don't go over 3, ever.
+    local scaled = math.min(3, settings.sneakXPScale() * math.log(data / 10))
+
+    if scaled > 0 then
+        interfaces.SkillProgression.skillUsed(core.stats.Skill.records.sneak.id,
+            {
+                scale = scaled,
+                useType = interfaces.SkillProgression.SKILL_USE_TYPES
+                    .Sneak_PickPocket,
+                manual = true
+            })
+    end
 end
 
 return {
