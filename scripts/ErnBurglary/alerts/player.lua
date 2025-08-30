@@ -28,18 +28,6 @@ local util = require('openmw.util')
 local aux_util = require('openmw_aux.util')
 local aux_ui = require('openmw_aux.ui')
 
--- blind is an open eye, night eye is an open eye in partial shadow
-
--- vanilla blind icon = s\tx_s_blind.tga
--- bigicons blind icon = Icons/s/B_Tx_S_Blind.dds
--- bigicons blind icon = Icons/s/Tx_S_Blind.dds
-
--- vanilla nighteye icon = s\Tx_S_nighteye.tga
--- bigicons nighteye icon = Icons/s/B_Tx_S_night_eye.dds
--- bigicons nighteye icon = Icons/s/B_Tx_S_nighteye.dds
--- bigicons nighteye icon = Icons/s/Tx_S_night_eye.dds
--- bigicons nighteye icon = Icons/s/Tx_S_nighteye.dds
-
 -- pendingMessage exists so we don't spam a bunch of messages in a row.
 -- instead, only show the latest one.
 local pendingMessage = nil
@@ -52,7 +40,6 @@ local function queueMessage(fmt, args)
     }
 end
 
-local visible = false
 local sneaking = false
 local spotted = false
 
@@ -92,25 +79,16 @@ end
 
 local function drawSpottedIcon()
     if spottedIcon == nil then
-        -- icons\s\tx_s_blind.dds
         local iconPath = "icons\\ernburglary\\b_tx_spotted.dds"
-        --local iconPath = core.magic.effects.records[core.magic.EFFECT_TYPE.Blind].icon
-        -- local iconPath = core.stats.Skill.records["sneak"].icon
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
+    settings.debugPrint(tostring(interfaces.UI.isHudVisible()))
     local newVisible = (spotted and interfaces.UI.isHudVisible()) and
         ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never"))
 
-    if newVisible ~= visible then
-        visible = newVisible
-        spottedIcon.layout.props.visible = newVisible
-        spottedIcon:update()
-        ui.updateAll()
-    end
-    spottedIcon.layout.props.visible = visible
+    spottedIcon.layout.props.visible = newVisible
     spottedIcon:update()
-    ui.updateAll()
 end
 
 local function resetIcon()
@@ -119,6 +97,7 @@ local function resetIcon()
         spottedIcon = nil
     end
     drawSpottedIcon()
+    ui.updateAll()
 end
 
 settings.onUISettingsChange(resetIcon)
@@ -184,13 +163,13 @@ end
 
 local function showExpelledMessage(data)
     settings.debugPrint("showExpelledMessage")
-    local faction = core.factions.records[data.faction]
+    --local faction = core.factions.records[data.faction]
     ui.showMessage(localization("showExpelledMessage", {
         factionName = data.faction.name
     }))
 end
 
-local function onInfrequentUpdate(dt)
+local function update(dt)
     onSneakChange(self.controls.sneak)
 
     drawSpottedIcon()
@@ -206,12 +185,16 @@ local function onInfrequentUpdate(dt)
     pendingMessage = nil
 end
 
-local infrequentMap = infrequent.FunctionCollection:new()
-infrequentMap:addCallback("onInfrequentUpdate", 0.09, onInfrequentUpdate)
-
-local function onUpdate(dt)
-    if dt ~= 0 then
-        infrequentMap:onUpdate(dt)
+-- Redrawing the UI should work while paused.
+local frameCountDown = 30
+local simTime = 0
+local function onFrame(dt)
+    frameCountDown = frameCountDown - 1
+    simTime = simTime + dt
+    if frameCountDown <= 0 then
+        update(simTime)
+        frameCountDown = 30
+        simTime = 0
     end
 end
 
@@ -223,6 +206,6 @@ return {
         [settings.MOD_NAME .. "showExpelledMessage"] = showExpelledMessage,
     },
     engineHandlers = {
-        onUpdate = onUpdate,
+        onFrame = onFrame,
     }
 }
