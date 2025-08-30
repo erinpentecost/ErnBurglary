@@ -329,7 +329,7 @@ local function onNPCActivated(data)
 end
 
 local function UiModeChanged(data)
-    settings.debugPrint("ui changed: " .. aux_util.deepToString(data, 2))
+    --settings.debugPrint("ui changed: " .. aux_util.deepToString(data, 2))
     if data.newMode == "Dialogue" or data.newMode == "Companion" then
         settings.debugPrint("in dialogue")
         if lastNPCActivated ~= nil then
