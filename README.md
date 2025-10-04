@@ -20,6 +20,7 @@ You can optionally enable behavior that mimics what you see in *No Witness No Bo
 When you enter an area through a door that was locked with a key, but you don't have that key, you'll be considered trespassing. If the door is owned by someone, it's also considered trespassing to use it.
 If you get Spotted while trespassing, you'll incur a 10 gold fine (configurable).
 So long as you've used the key on the door once, you will be allowed in the area through that door from then on. You don't have to keep the key forever.
+You can force a door to not trigger trespassing by opening up the console, selecting the door, and then enter in the `lua notrespass` command.
 
 ## Indicators
 While you're spotted in the area, a 5pt Drain Sneak effect is applied. This is removed as soon as you're no longer spotted.

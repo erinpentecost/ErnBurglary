@@ -14,12 +14,14 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]] local settings = require("scripts.ErnBurglary.settings")
-local interfaces = require('openmw.interfaces')
-local types = require("openmw.types")
-local core = require("openmw.core")
+]]
+local settings     = require("scripts.ErnBurglary.settings")
+local interfaces   = require('openmw.interfaces')
+local types        = require("openmw.types")
+local core         = require("openmw.core")
 local localization = core.l10n(settings.MOD_NAME)
-local ui = require('openmw.ui')
+local ui           = require('openmw.ui')
+local pself        = require("openmw.self")
 
 local function showTrespassingMessage(data)
     settings.debugPrint("showTrespassingMessage")
@@ -28,9 +30,30 @@ local function showTrespassingMessage(data)
     end
 end
 
+local function onConsoleCommand(mode, command, selectedObject)
+    local function getSuffixForCmd(prefix)
+        if string.sub(command:lower(), 1, string.len(prefix)) == prefix then
+            return string.sub(command, string.len(prefix) + 1)
+        else
+            return nil
+        end
+    end
+    local noTrespass = getSuffixForCmd("lua notrespass")
+
+    if noTrespass ~= nil then
+        settings.debugPrint("Processing notrespass command.")
+        core.sendGlobalEvent(settings.MOD_NAME .. "onNoTrespass", {
+            player = pself,
+            selectedObject = selectedObject
+        })
+    end
+end
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "showTrespassingMessage"] = showTrespassingMessage
+    },
+    engineHandlers = {
+        onConsoleCommand = onConsoleCommand,
     }
 }
-

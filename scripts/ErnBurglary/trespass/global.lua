@@ -14,7 +14,8 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-]] local settings = require("scripts.ErnBurglary.settings")
+]]
+local settings = require("scripts.ErnBurglary.settings")
 local interfaces = require('openmw.interfaces')
 local types = require("openmw.types")
 local aux_util = require('openmw_aux.util')
@@ -81,7 +82,7 @@ local function cellHasOwnedItems(cell)
             local owner = common.serializeOwner(obj.owner)
             if owner ~= nil then
                 settings.debugPrint("Cell " .. cell.id .. " has an object owned by " ..
-                                        aux_util.deepToString(owner, 2))
+                    aux_util.deepToString(owner, 2))
                 return true
             end
         end
@@ -90,7 +91,6 @@ local function cellHasOwnedItems(cell)
 end
 
 local function onActivate(object, actor)
-
     if types.Player.objectIsInstance(actor) ~= true then
         return
     end
@@ -160,7 +160,6 @@ local function onCellChange(data)
             persistedState[data.player.id] = nil
         end
     end
-
 end
 
 interfaces.ErnBurglary.onCellChangeCallback(onCellChange)
@@ -188,8 +187,31 @@ end
 
 interfaces.ErnBurglary.onSpottedChangeCallback(onSpottedChange)
 
+local function onNoTrespass(data)
+    -- undo current trespassing state, if set.
+    persistedState[data.player.id] = nil
+    -- if the player selected a door, unset ownership info on it.
+    if (data.selectedObject ~= nil) and types.Door.objectIsInstance(data.selectedObject) then
+        print("Removing ownership on door: " .. tostring(data.selectedObject.id))
+        data.selectedObject.owner.recordId = nil
+        data.selectedObject.owner.factionId = nil
+        print("Owner: " ..
+            tostring(data.selectedObject.owner.recordId) .. " / " .. tostring(data.selectedObject.owner.factionId))
+
+        print("Checking key...")
+        local keyRecord = types.Lockable.getKeyRecord(data.selectedObject)
+        if keyRecord ~= nil then
+            local mapKey = "key_" .. data.player.id .. keyRecord.id
+            print("Remembering key " .. mapKey)
+            persistedState[mapKey] = true
+        end
+    end
+end
+
 return {
-    eventHandlers = {},
+    eventHandlers = {
+        [settings.MOD_NAME .. "onNoTrespass"] = onNoTrespass,
+    },
     engineHandlers = {
         onSave = saveState,
         onLoad = loadState,

@@ -18,10 +18,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local settings   = require("scripts.ErnBurglary.settings")
 local interfaces = require("openmw.interfaces")
 local core       = require("openmw.core")
+local pself      = require("openmw.self")
+local types      = require("openmw.types")
 
 local function xpOnStolenCallback(data)
-    -- don't go over 3, ever.
-    local scaled = math.min(3, settings.sneakXPScale() * math.log(data / 10))
+    local sneakTerm = 3 * types.NPC.stats.skills.sneak(pself).base
+    local maxVal = 2
+    if interfaces.NCGDMW then
+        sneakTerm = 10
+        maxVal = 1
+    end
+    local scaled = math.min(maxVal, settings.sneakXPScale() * (math.log(data / sneakTerm)))
 
     if scaled > 0 then
         interfaces.SkillProgression.skillUsed(core.stats.Skill.records.sneak.id,

@@ -29,6 +29,10 @@ local aux_util = require('openmw_aux.util')
 
 settings.registerPage()
 
+local blockedCells = {
+    ["seyda neen, census and excise office"] = true
+}
+
 -- lastCellID will be nil if loading from a save game.
 -- otherwise, it will be the cell we just moved from.
 local lastCellID = nil
@@ -141,6 +145,10 @@ end
 -- sendSpottedEvent notifies the rest of the mod that a detection occurred. If you are making a sneak mechanic overhaul mod,
 -- then you should send the global event inside this function every time the player is spotted by an NPC.
 local function sendSpottedEvent(npc)
+    if blockedCells[self.cell.id] == true then
+        settings.debugPrint("Blocked cell")
+        return
+    end
     settings.debugPrint("sending spotted by event for " .. npc.recordId)
 
     core.sendGlobalEvent(settings.MOD_NAME .. "onSpotted", {
@@ -258,11 +266,16 @@ local function inventoryChangeCheck(dt)
             itemCell = self.cell.id
         end
 
-        core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
-            player = self,
-            cellID = itemCell,
-            itemsList = newItemsList
-        })
+        if blockedCells[self.cell.id] == true then
+            settings.debugPrint("Blocked cell")
+            return
+        else
+            core.sendGlobalEvent(settings.MOD_NAME .. "onNewItem", {
+                player = self,
+                cellID = itemCell,
+                itemsList = newItemsList
+            })
+        end
     end
 end
 
