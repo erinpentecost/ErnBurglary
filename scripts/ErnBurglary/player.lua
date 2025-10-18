@@ -193,6 +193,23 @@ local function LOS(player, actor)
     return false
 end
 
+-- cache the sneak check roll so it doesn't happen so freqently, because that's unfair.
+local sneakCheckCache = {}
+local function cachedCheck(key, fn)
+    if sneakCheckCache[key] ~= nil then
+        --settings.debugPrint("used cached sneak result for " .. tostring(key))
+        return sneakCheckCache[key]
+    end
+    local sneakResult = fn()
+    settings.debugPrint("new sneak result for " .. tostring(key) .. ": " .. tostring(sneakResult))
+    sneakCheckCache[key] = sneakResult
+    return sneakResult
+end
+local function onClearCache()
+    --settings.debugPrint("cleared sneak cache")
+    sneakCheckCache = {}
+end
+
 local function detectionCheck(dt)
     -- find out which NPC is talking
     for _, actor in ipairs(nearby.actors) do
@@ -201,7 +218,7 @@ local function detectionCheck(dt)
             (types.Actor.isDeathFinished(actor) ~= true) then
             local distance = (self.position - actor.position):length()
             if distance <= 400 then
-                local sneakResult = sneakCheck(actor, distance)
+                local sneakResult = cachedCheck(actor.id, function() return sneakCheck(actor, distance) end)
                 if (isTalking(actor) or (distance <= 100)) and (sneakResult ~= true) then
                     -- do a raycast to check if we have line of sight
                     if LOS(self, actor) then
@@ -326,8 +343,10 @@ local function onInfrequentUpdate(dt)
     end
 end
 
+
 local infrequentMap = infrequent.FunctionCollection:new()
 infrequentMap:addCallback("onInfrequentUpdate", 0.15, onInfrequentUpdate)
+infrequentMap:addCallback("onClearCache", 1.5, onClearCache)
 
 local function onUpdate(dt)
     if dt ~= 0 then
