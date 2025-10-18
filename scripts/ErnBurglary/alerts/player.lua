@@ -83,7 +83,6 @@ local function drawSpottedIcon()
         settings.debugPrint("iconpath: " .. iconPath)
         spottedIcon = makeIcon(iconPath)
     end
-    settings.debugPrint(tostring(interfaces.UI.isHudVisible()))
     local newVisible = (spotted and interfaces.UI.isHudVisible()) and
         ((settings.icon()["showIcon"] == "always") or (self.controls.sneak and settings.icon()["showIcon"] ~= "never"))
 
