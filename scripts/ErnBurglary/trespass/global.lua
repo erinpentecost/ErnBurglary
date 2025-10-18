@@ -123,6 +123,13 @@ local function onActivate(object, actor)
             return
         end
 
+        -- Only doors that have been locked (ever) are eligible for trespassing.
+        local keyDoor = "door_" .. object.id
+        if not persistedState[keyDoor] then
+            settings.debugPrint("door was never locked")
+            return
+        end
+
         -- If the door is owned, then we are always considered trespassing.
         if object.owner ~= nil then
             if object.owner.recordId ~= nil then
@@ -139,7 +146,8 @@ local function onActivate(object, actor)
 
         -- If the door has a key, we *might* be trespassing.
         -- Only consider us trespassing if we don't have the key,
-        -- and if there is an owned item in the target cell.
+        -- and if there is an owned item in the target cell,
+        -- and if the door was ever locked.
         -- I check for owned items in order to exclude dungeons.
         local keyRecord = types.Lockable.getKeyRecord(object)
         if keyRecord ~= nil then
@@ -208,9 +216,16 @@ local function onNoTrespass(data)
     end
 end
 
+local function onDoorLocked(data)
+    -- Remember that the door is locked.
+    local mapKey = "door_" .. data.door.id
+    persistedState[mapKey] = true
+end
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "onNoTrespass"] = onNoTrespass,
+        [settings.MOD_NAME .. "onDoorLocked"] = onDoorLocked,
     },
     engineHandlers = {
         onSave = saveState,
