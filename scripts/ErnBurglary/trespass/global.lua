@@ -59,6 +59,15 @@ local function hasKey(door, actor)
     for _, item in ipairs(types.Actor.inventory(actor):getAll(types.Miscellaneous)) do
         if item.recordId == keyRecord.id then
             settings.debugPrint("We currently have the key for " .. door.id .. ".")
+            -- But are we allowed to have the key?
+            if item.owner.recordId ~= nil then
+                settings.debugPrint("key is owned by " .. item.owner.recordId)
+                return false
+            elseif (item.owner.factionId ~= nil) and
+                (common.atLeastRank(actor, item.owner.factionId, item.owner.factionRank) == false) then
+                settings.debugPrint("key is owned by " .. item.owner.factionId)
+                return false
+            end
             -- memorize ownership of the key.
             persistedState[mapKey] = true
             -- let them in.
@@ -130,32 +139,34 @@ local function onActivate(object, actor)
             return
         end
 
-        -- If the door is owned, then we are always considered trespassing.
-        if object.owner ~= nil then
-            if object.owner.recordId ~= nil then
-                settings.debugPrint("door is owned by " .. object.owner.recordId)
-                setIsTrespassing(actor, destCell)
-                return
-            elseif (object.owner.factionId ~= nil) and
-                (common.atLeastRank(actor, object.owner.factionId, object.owner.factionRank) == false) then
-                settings.debugPrint("door is owned by " .. object.owner.factionId)
-                setIsTrespassing(actor, destCell)
+        -- If we have a key that is not stolen, we are allowed.
+        local keyRecord = types.Lockable.getKeyRecord(object)
+        if keyRecord ~= nil then
+            settings.debugPrint("door has a key")
+            if hasKey(object, actor) then
+                settings.debugPrint("player has the door key")
                 return
             end
         end
 
-        -- If the door has a key, we *might* be trespassing.
-        -- Only consider us trespassing if we don't have the key,
-        -- and if there is an owned item in the target cell,
-        -- and if the door was ever locked.
-        -- I check for owned items in order to exclude dungeons.
-        local keyRecord = types.Lockable.getKeyRecord(object)
-        if keyRecord ~= nil then
-            settings.debugPrint("door has a key")
-            if (hasKey(object, actor) ~= true) and (cellHasOwnedItems(destCell)) then
+        -- If the door is owned then we are trespassing.
+        if object.owner ~= nil then
+            if object.owner.recordId ~= nil then
+                settings.debugPrint("door is owned by " .. object.owner.recordId)
                 setIsTrespassing(actor, destCell)
-                return
+            elseif (object.owner.factionId ~= nil) and
+                (common.atLeastRank(actor, object.owner.factionId, object.owner.factionRank) == false) then
+                settings.debugPrint("door is owned by " .. object.owner.factionId)
+                setIsTrespassing(actor, destCell)
             end
+        end
+
+        -- If the door has a key, we don't have the key, and there are
+        -- owned items behind the door, then are trespassing.
+        if (keyRecord ~= nil) and cellHasOwnedItems(destCell) then
+            settings.debugPrint("target cell has owned items")
+            setIsTrespassing(actor, destCell)
+            return
         end
     end
 end
