@@ -106,7 +106,6 @@ local function onUISettingsChange(fn)
     group:subscribe(async:callback(function(_, key)
         debugPrint("Reloading UI...")
         fn()
-        ui.updateAll()
     end))
 end
 
