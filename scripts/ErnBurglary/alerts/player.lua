@@ -96,7 +96,6 @@ local function resetIcon()
         spottedIcon = nil
     end
     drawSpottedIcon()
-    ui.updateAll()
 end
 
 settings.onUISettingsChange(resetIcon)
